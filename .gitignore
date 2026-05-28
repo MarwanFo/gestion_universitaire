@@ -1,0 +1,16 @@
+# Root Git Ignore to make sure local vendor, node_modules and .env files are not pushed
+/backend/vendor/
+/backend/node_modules/
+/backend/.env
+/backend/storage/*.key
+
+/frontend/node_modules/
+/frontend/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Ignore all markdown files except README.md
+*.md
+!README.md
