@@ -194,6 +194,54 @@ export default function AdminDashboard() {
   const [selectedResForRejection, setSelectedResForRejection] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
+  // Absences Management states
+  const [dbAbsences, setDbAbsences] = useState([]);
+  const [loadingAbsences, setLoadingAbsences] = useState(false);
+  const [absencesClassFilter, setAbsencesClassFilter] = useState('');
+  const [selectedJustificationForModal, setSelectedJustificationForModal] = useState(null);
+  const [isJustificationModalOpen, setIsJustificationModalOpen] = useState(false);
+  const [rejectionReasonAbsence, setRejectionReasonAbsence] = useState('');
+  const [isRejectAbsenceModalOpen, setIsRejectAbsenceModalOpen] = useState(false);
+  const [selectedAbsenceForRejection, setSelectedAbsenceForRejection] = useState(null);
+
+  const fetchAbsences = async () => {
+    setLoadingAbsences(true);
+    try {
+      const res = await api.get('/admin/absences');
+      setDbAbsences(res.data || []);
+    } catch (e) {
+      console.warn("Failed to fetch absences", e);
+    } finally {
+      setLoadingAbsences(false);
+    }
+  };
+
+  const handleApproveJustification = async (absenceId) => {
+    try {
+      await api.post(`/admin/absences/${absenceId}/justify`, { status: 'validated' });
+      await fetchAbsences();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Erreur lors de la validation.');
+    }
+  };
+
+  const handleRejectJustification = async (e) => {
+    e.preventDefault();
+    if (!selectedAbsenceForRejection) return;
+    try {
+      await api.post(`/admin/absences/${selectedAbsenceForRejection.id}/justify`, {
+        status: 'rejected',
+        rejection_reason: rejectionReasonAbsence
+      });
+      setIsRejectAbsenceModalOpen(false);
+      setSelectedAbsenceForRejection(null);
+      setRejectionReasonAbsence('');
+      await fetchAbsences();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Erreur lors du rejet.');
+    }
+  };
+
   // Grades Management states
   const [gradesMgmtFieldId, setGradesMgmtFieldId] = useState('');
   const [gradesMgmtGroupId, setGradesMgmtGroupId] = useState('');
@@ -429,7 +477,8 @@ export default function AdminDashboard() {
         api.get('/admin/groups').then(res => setGroups(res.data || [])).catch(e => console.warn("Failed to fetch groups", e)),
         api.get('/admin/rooms').then(res => setRooms(res.data || [])).catch(e => console.warn("Failed to fetch rooms", e)),
         api.get('/admin/timetables').then(res => setAllTimetableSlots(res.data || [])).catch(e => console.warn("Failed to fetch all slots", e)),
-        api.get('/admin/reservations').then(res => setDbReservations(res.data || [])).catch(e => console.warn("Failed to fetch reservations", e))
+        api.get('/admin/reservations').then(res => setDbReservations(res.data || [])).catch(e => console.warn("Failed to fetch reservations", e)),
+        api.get('/admin/absences').then(res => setDbAbsences(res.data || [])).catch(e => console.warn("Failed to fetch absences", e))
       ];
 
       await Promise.allSettled(promises);
@@ -1346,6 +1395,18 @@ export default function AdminDashboard() {
             >
               <Award className="h-4 w-4" />
               Saisie des Notes
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('absences_mgmt'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'absences_mgmt' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <UserCheck className="h-4 w-4" />
+              Suivi des Absences
             </button>
           </nav>
         </div>
@@ -4327,6 +4388,124 @@ export default function AdminDashboard() {
                   className="py-2.5 px-5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-md shadow-rose-600/10"
                 >
                   Rejeter la demande
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal: Visualiser le Justificatif */}
+      {isJustificationModalOpen && selectedJustificationForModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col animate-scaleUp">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Justificatif d'Absence</h3>
+                <p className="text-xs text-slate-500 mt-1">Étudiant : {selectedJustificationForModal.student?.name}</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsJustificationModalOpen(false);
+                  setSelectedJustificationForModal(null);
+                }}
+                className="p-1.5 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-slate-50 min-h-[300px]">
+              {selectedJustificationForModal.justification_path ? (
+                selectedJustificationForModal.justification_path.toLowerCase().endsWith('.pdf') ? (
+                  <iframe 
+                    src={getFileUrl(selectedJustificationForModal.justification_path)} 
+                    className="w-full h-[400px] rounded-xl border border-slate-200"
+                    title="Aperçu PDF"
+                  />
+                ) : (
+                  <img 
+                    src={getFileUrl(selectedJustificationForModal.justification_path)} 
+                    alt="Justificatif Médical" 
+                    className="max-w-full max-h-[400px] object-contain rounded-xl shadow-md border border-slate-200" 
+                  />
+                )
+              ) : (
+                <p className="text-xs text-slate-400">Aucun fichier à visualiser</p>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-between p-6 border-t border-slate-100 bg-slate-50/20">
+              <button
+                onClick={() => window.open(getFileUrl(selectedJustificationForModal.justification_path), '_blank')}
+                className="py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-indigo-600 text-xs font-bold transition-all flex items-center gap-1.5"
+              >
+                🌐 Ouvrir dans un nouvel onglet
+              </button>
+              <button
+                onClick={() => {
+                  setIsJustificationModalOpen(false);
+                  setSelectedJustificationForModal(null);
+                }}
+                className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Rejeter la Justification */}
+      {isRejectAbsenceModalOpen && selectedAbsenceForRejection && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-scaleUp">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Rejeter la Justification</h3>
+                <p className="text-xs text-slate-500 mt-1">Indiquez la raison du rejet pour l'étudiant</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsRejectAbsenceModalOpen(false);
+                  setSelectedAbsenceForRejection(null);
+                }}
+                className="p-1.5 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRejectJustification}>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Motif du Refus *</label>
+                  <textarea
+                    required
+                    rows="3"
+                    value={rejectionReasonAbsence}
+                    onChange={e => setRejectionReasonAbsence(e.target.value)}
+                    placeholder="Ex: Document non lisible, date non concordante, signature absente..."
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none text-xs text-slate-700 transition-all resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end p-6 border-t border-slate-100 bg-slate-50/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRejectAbsenceModalOpen(false);
+                    setSelectedAbsenceForRejection(null);
+                  }}
+                  className="py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-bold transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="py-2.5 px-5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-md shadow-rose-600/10"
+                >
+                  Rejeter
                 </button>
               </div>
             </form>

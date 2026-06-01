@@ -69,4 +69,58 @@ class AbsenceController extends Controller
 
         return response()->json(['message' => 'Feuille d\'appel enregistrée avec succès.']);
     }
+
+    /**
+     * Admin: Obtenir la liste de toutes les absences.
+     */
+    public function getAdminAbsences(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $absences = \App\Models\Absence::with([
+            'student', 
+            'timetable.module', 
+            'timetable.group'
+        ])
+        ->orderBy('date', 'desc')
+        ->get();
+
+        return response()->json($absences);
+    }
+
+    /**
+     * Admin: Valider ou rejeter une justification.
+     */
+    public function justifyAbsence(Request $request, \App\Models\Absence $absence)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $request->validate([
+            'status' => 'required|in:validated,rejected',
+            'rejection_reason' => 'nullable|string',
+        ]);
+
+        $status = $request->status;
+
+        if ($status === 'validated') {
+            $absence->update([
+                'justification_status' => 'validated',
+                'status' => 'justified',
+            ]);
+        } else {
+            $absence->update([
+                'justification_status' => 'rejected',
+                'rejection_reason' => $request->rejection_reason ?? 'Justificatif invalide ou non recevable.',
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Le statut de la justification a été mis à jour avec succès.',
+            'absence' => $absence->load(['student', 'timetable.module', 'timetable.group'])
+        ]);
+    }
 }

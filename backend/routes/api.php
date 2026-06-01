@@ -102,5 +102,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Grade Management for Admin
         Route::get('/admin/grades', [GradeController::class, 'getAdminGrades']);
         Route::post('/admin/grades/bulk', [GradeController::class, 'bulkUpdateGrades']);
+
+        // Absence Management for Admin
+        Route::get('/admin/absences', [AbsenceController::class, 'getAdminAbsences']);
+        Route::post('/admin/absences/{absence}/justify', [AbsenceController::class, 'justifyAbsence']);
     });
 });
