@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\TimetableController;
 use App\Http\Controllers\Api\FieldController;
 use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\GroupController;
+use App\Http\Controllers\Api\RoomController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -86,8 +87,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/groups', [GroupController::class, 'store']);
         Route::put('/admin/groups/{id}', [GroupController::class, 'update']);
         Route::delete('/admin/groups/{id}', [GroupController::class, 'destroy']);
-        Route::get('/admin/rooms', [GroupController::class, 'getRooms']);
         Route::get('/admin/groups/{id}/students', [GroupController::class, 'getStudents']);
         Route::post('/admin/groups/split', [GroupController::class, 'splitPromotion']);
+
+        // Room Management CRUD
+        Route::apiResource('admin/rooms', RoomController::class);
+
+        // Reservation Management CRUD for Admin
+        Route::get('/admin/reservations', [ReservationController::class, 'adminIndex']);
+        Route::post('/admin/reservations', [ReservationController::class, 'adminStore']);
+        Route::put('/admin/reservations/{id}', [ReservationController::class, 'adminUpdate']);
+        Route::delete('/admin/reservations/{id}', [ReservationController::class, 'adminDestroy']);
+
+        // Grade Management for Admin
+        Route::get('/admin/grades', [GradeController::class, 'getAdminGrades']);
+        Route::post('/admin/grades/bulk', [GradeController::class, 'bulkUpdateGrades']);
     });
 });

@@ -68,4 +68,98 @@ class ReservationController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }
+
+    /**
+     * Admin view: get all reservations.
+     */
+    public function adminIndex(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $reservations = \App\Models\Reservation::with(['room', 'professor'])
+            ->orderBy('date', 'desc')
+            ->orderBy('start_time', 'desc')
+            ->get();
+
+        return response()->json($reservations);
+    }
+
+    /**
+     * Admin: direct room reservation.
+     */
+    public function adminStore(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $validated = $request->validate([
+            'room_id' => 'required|exists:rooms,id',
+            'date' => 'required|date',
+            'start_time' => 'required|string',
+            'end_time' => 'required|string',
+            'reason' => 'nullable|string',
+        ]);
+
+        $reservation = \App\Models\Reservation::create([
+            'room_id' => $validated['room_id'],
+            'professor_id' => $request->user()->id, // admin acts as reserving person
+            'date' => $validated['date'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+            'reason' => $validated['reason'] ?? 'Réservation administrative',
+            'status' => 'approved'
+        ]);
+
+        return response()->json([
+            'message' => 'Salle réservée avec succès par l\'administration.',
+            'reservation' => $reservation->load('room')
+        ], 201);
+    }
+
+    /**
+     * Admin: update reservation status/details.
+     */
+    public function adminUpdate(Request $request, $id)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $reservation = \App\Models\Reservation::findOrFail($id);
+
+        $validated = $request->validate([
+            'status' => 'required|string|in:pending,approved,rejected',
+            'reason' => 'nullable|string',
+            'date' => 'nullable|date',
+            'start_time' => 'nullable|string',
+            'end_time' => 'nullable|string',
+        ]);
+
+        $reservation->update($validated);
+
+        return response()->json([
+            'message' => 'Réservation mise à jour avec succès.',
+            'reservation' => $reservation->load(['room', 'professor'])
+        ]);
+    }
+
+    /**
+     * Admin: cancel/delete a reservation.
+     */
+    public function adminDestroy(Request $request, $id)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $reservation = \App\Models\Reservation::findOrFail($id);
+        $reservation->delete();
+
+        return response()->json([
+            'message' => 'Réservation supprimée/annulée avec succès.'
+        ]);
+    }
 }

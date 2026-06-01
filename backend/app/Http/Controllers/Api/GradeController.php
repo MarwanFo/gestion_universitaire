@@ -72,4 +72,53 @@ class GradeController extends Controller
 
         return response()->json(['message' => 'Notes enregistrées avec succès.']);
     }
+
+    /**
+     * Admin: Obtenir les notes d'un groupe pour un module.
+     */
+    public function getAdminGrades(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $request->validate([
+            'group_id' => 'required|exists:groups,id',
+            'module_id' => 'required|exists:modules,id',
+        ]);
+
+        $grades = $this->gradeService->getGroupGrades($request->group_id, $request->module_id);
+        return response()->json($grades);
+    }
+
+    /**
+     * Admin: Saisie groupée (bulk update) des notes.
+     */
+    public function bulkUpdateGrades(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $request->validate([
+            'module_id' => 'required|exists:modules,id',
+            'grades' => 'required|array',
+            'grades.*.student_id' => 'required|exists:users,id',
+            'grades.*.cc1' => 'nullable|numeric|min:0|max:20',
+            'grades.*.cc2' => 'nullable|numeric|min:0|max:20',
+            'grades.*.exam' => 'nullable|numeric|min:0|max:20',
+        ]);
+
+        foreach ($request->grades as $item) {
+            $this->gradeService->saveGrade(
+                $item['student_id'],
+                $request->module_id,
+                $item['cc1'] ?? 0,
+                $item['cc2'] ?? 0,
+                $item['exam'] ?? 0
+            );
+        }
+
+        return response()->json(['message' => 'Notes administratives enregistrées avec succès.']);
+    }
 }

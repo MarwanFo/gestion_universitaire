@@ -177,6 +177,227 @@ export default function AdminDashboard() {
   const [timetableSaving, setTimetableSaving] = useState(false);
   const [timetableAiGenerating, setTimetableAiGenerating] = useState(false);
 
+  // Rooms and Reservations states
+  const [dbReservations, setDbReservations] = useState([]);
+  const [loadingReservations, setLoadingReservations] = useState(false);
+  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [roomFormName, setRoomFormName] = useState('');
+  const [roomFormType, setRoomFormType] = useState('TD');
+  const [roomFormCapacity, setRoomFormCapacity] = useState(30);
+  const [roomFormError, setRoomFormError] = useState('');
+  const [roomFormSaving, setRoomFormSaving] = useState(false);
+  const [roomsSubTab, setRoomsSubTab] = useState('salles'); // 'salles' or 'reservations'
+  
+  // Rejection modal
+  const [isRejectReservationModalOpen, setIsRejectReservationModalOpen] = useState(false);
+  const [selectedResForRejection, setSelectedResForRejection] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // Grades Management states
+  const [gradesMgmtFieldId, setGradesMgmtFieldId] = useState('');
+  const [gradesMgmtGroupId, setGradesMgmtGroupId] = useState('');
+  const [gradesMgmtModuleId, setGradesMgmtModuleId] = useState('');
+  const [gradesMgmtStudents, setGradesMgmtStudents] = useState([]);
+  const [gradesMgmtLoading, setGradesMgmtLoading] = useState(false);
+  const [gradesMgmtError, setGradesMgmtError] = useState('');
+  const [gradesMgmtSaving, setGradesMgmtSaving] = useState(false);
+  const [gradesMgmtSuccessMsg, setGradesMgmtSuccessMsg] = useState('');
+
+  const fetchGradesMgmt = async (groupId, moduleId) => {
+    if (!groupId || !moduleId) return;
+    setGradesMgmtLoading(true);
+    setGradesMgmtError('');
+    setGradesMgmtSuccessMsg('');
+    try {
+      const res = await api.get('/admin/grades', {
+        params: { group_id: groupId, module_id: moduleId }
+      });
+      setGradesMgmtStudents(res.data.map(item => ({
+        ...item,
+        cc1: item.cc1 === null || item.cc1 === undefined ? '' : item.cc1,
+        cc2: item.cc2 === null || item.cc2 === undefined ? '' : item.cc2,
+        exam: item.exam === null || item.exam === undefined ? '' : item.exam
+      })));
+    } catch (err) {
+      setGradesMgmtError(err.response?.data?.message || 'Erreur lors du chargement des notes.');
+    } finally {
+      setGradesMgmtLoading(false);
+    }
+  };
+
+  const handleGradeInputChange = (studentId, field, value) => {
+    let parsed = value;
+    if (value !== '') {
+      // Allow decimals like 14.5
+      parsed = value;
+      // We will keep it as string so user can type decimals, but validate max/min
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        if (num < 0) parsed = '0';
+        if (num > 20) parsed = '20';
+      }
+    }
+
+    setGradesMgmtStudents(prev => prev.map(s => {
+      if (s.student_id === studentId) {
+        const updated = { ...s, [field]: parsed };
+        const cc1Val = parseFloat(updated.cc1) || 0;
+        const cc2Val = parseFloat(updated.cc2) || 0;
+        const examVal = parseFloat(updated.exam) || 0;
+        updated.final_grade = (cc1Val * 0.2) + (cc2Val * 0.2) + (examVal * 0.6);
+        return updated;
+      }
+      return s;
+    }));
+  };
+
+  const handleSaveGradesMgmt = async () => {
+    if (!gradesMgmtModuleId) return;
+    setGradesMgmtSaving(true);
+    setGradesMgmtError('');
+    setGradesMgmtSuccessMsg('');
+    try {
+      const payload = {
+        module_id: gradesMgmtModuleId,
+        grades: gradesMgmtStudents.map(s => ({
+          student_id: s.student_id,
+          cc1: s.cc1 === '' ? 0 : parseFloat(s.cc1),
+          cc2: s.cc2 === '' ? 0 : parseFloat(s.cc2),
+          exam: s.exam === '' ? 0 : parseFloat(s.exam)
+        }))
+      };
+
+      await api.post('/admin/grades/bulk', payload);
+      setGradesMgmtSuccessMsg('La grille des notes a été enregistrée avec succès.');
+      await fetchGradesMgmt(gradesMgmtGroupId, gradesMgmtModuleId);
+    } catch (err) {
+      setGradesMgmtError(err.response?.data?.message || 'Erreur lors de l\'enregistrement des notes.');
+    } finally {
+      setGradesMgmtSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (gradesMgmtGroupId && gradesMgmtModuleId) {
+      fetchGradesMgmt(gradesMgmtGroupId, gradesMgmtModuleId);
+    } else {
+      setGradesMgmtStudents([]);
+    }
+  }, [gradesMgmtGroupId, gradesMgmtModuleId]);
+
+  const fetchRooms = async () => {
+    try {
+      const res = await api.get('/admin/rooms');
+      setRooms(res.data || []);
+    } catch (e) {
+      console.warn("Failed to fetch rooms", e);
+    }
+  };
+
+  const fetchReservations = async () => {
+    setLoadingReservations(true);
+    try {
+      const res = await api.get('/admin/reservations');
+      setDbReservations(res.data || []);
+    } catch (e) {
+      console.warn("Failed to fetch reservations", e);
+    } finally {
+      setLoadingReservations(false);
+    }
+  };
+
+  // Room Actions
+  const handleSaveRoom = async (e) => {
+    e.preventDefault();
+    if (!roomFormName.trim()) {
+      setRoomFormError('Le nom de la salle est requis.');
+      return;
+    }
+    setRoomFormSaving(true);
+    setRoomFormError('');
+    try {
+      if (editingRoom) {
+        await api.put(`/admin/rooms/${editingRoom.id}`, {
+          name: roomFormName,
+          type: roomFormType,
+          capacity: parseInt(roomFormCapacity)
+        });
+      } else {
+        await api.post('/admin/rooms', {
+          name: roomFormName,
+          type: roomFormType,
+          capacity: parseInt(roomFormCapacity)
+        });
+      }
+      await fetchRooms();
+      setIsRoomModalOpen(false);
+      setEditingRoom(null);
+      setRoomFormName('');
+      setRoomFormType('TD');
+      setRoomFormCapacity(30);
+    } catch (err) {
+      setRoomFormError(err.response?.data?.message || 'Erreur lors de l\'enregistrement de la salle.');
+    } finally {
+      setRoomFormSaving(false);
+    }
+  };
+
+  const handleDeleteRoom = async (roomId) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer cette salle ?')) return;
+    try {
+      await api.delete(`/admin/rooms/${roomId}`);
+      await fetchRooms();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Erreur lors de la suppression de la salle.');
+    }
+  };
+
+  const openAddRoomModal = () => {
+    setEditingRoom(null);
+    setRoomFormName('');
+    setRoomFormType('TD');
+    setRoomFormCapacity(30);
+    setRoomFormError('');
+    setIsRoomModalOpen(true);
+  };
+
+  const openEditRoomModal = (room) => {
+    setEditingRoom(room);
+    setRoomFormName(room.name);
+    setRoomFormType(room.type);
+    setRoomFormCapacity(room.capacity);
+    setRoomFormError('');
+    setIsRoomModalOpen(true);
+  };
+
+  // Reservation Actions
+  const handleApproveReservation = async (resId) => {
+    try {
+      await api.put(`/admin/reservations/${resId}`, { status: 'approved' });
+      await fetchReservations();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Erreur lors de la validation.');
+    }
+  };
+
+  const handleRejectReservation = async (e) => {
+    e.preventDefault();
+    if (!selectedResForRejection) return;
+    try {
+      await api.put(`/admin/reservations/${selectedResForRejection.id}`, {
+        status: 'rejected',
+        reason: rejectionReason
+      });
+      setIsRejectReservationModalOpen(false);
+      setSelectedResForRejection(null);
+      setRejectionReason('');
+      await fetchReservations();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Erreur lors du rejet.');
+    }
+  };
+
   // Fetch PostgreSQL records
   useEffect(() => {
     const fetchData = async () => {
@@ -207,7 +428,8 @@ export default function AdminDashboard() {
         api.get('/admin/modules').then(res => setModules(res.data || [])).catch(e => console.warn("Failed to fetch modules", e)),
         api.get('/admin/groups').then(res => setGroups(res.data || [])).catch(e => console.warn("Failed to fetch groups", e)),
         api.get('/admin/rooms').then(res => setRooms(res.data || [])).catch(e => console.warn("Failed to fetch rooms", e)),
-        api.get('/admin/timetables').then(res => setAllTimetableSlots(res.data || [])).catch(e => console.warn("Failed to fetch all slots", e))
+        api.get('/admin/timetables').then(res => setAllTimetableSlots(res.data || [])).catch(e => console.warn("Failed to fetch all slots", e)),
+        api.get('/admin/reservations').then(res => setDbReservations(res.data || [])).catch(e => console.warn("Failed to fetch reservations", e))
       ];
 
       await Promise.allSettled(promises);
@@ -1100,6 +1322,30 @@ export default function AdminDashboard() {
             >
               <CalendarIcon className="h-4 w-4" />
               Planificateur IA
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('rooms'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'rooms' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <MapPin className="h-4 w-4" />
+              Salles & Réservations
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('grades_mgmt'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'grades_mgmt' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <Award className="h-4 w-4" />
+              Saisie des Notes
             </button>
           </nav>
         </div>
@@ -2367,6 +2613,366 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Tab: Salles & Réservations */}
+        {activeTab === 'rooms' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Tab header buttons */}
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-between flex-wrap gap-4">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRoomsSubTab('salles')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    roomsSubTab === 'salles'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                      : 'bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100'
+                  }`}
+                >
+                  <Building className="h-3.5 w-3.5 inline mr-1.5" />
+                  Gestion des Salles
+                </button>
+                <button
+                  onClick={() => {
+                    setRoomsSubTab('reservations');
+                    fetchReservations();
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    roomsSubTab === 'reservations'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                      : 'bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100'
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5 inline mr-1.5" />
+                  Réservations Professeurs
+                </button>
+              </div>
+
+              {roomsSubTab === 'salles' && (
+                <button
+                  onClick={openAddRoomModal}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md shadow-indigo-600/10"
+                >
+                  <Plus className="h-4 w-4" /> Ajouter une Salle
+                </button>
+              )}
+            </div>
+
+            {roomsSubTab === 'salles' ? (
+              <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-x-auto">
+                <table className="w-full min-w-[600px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="p-4">Nom de la Salle</th>
+                      <th className="p-4">Type</th>
+                      <th className="p-4">Capacité</th>
+                      <th className="p-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                    {rooms.map(room => (
+                      <tr key={room.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-4 font-bold text-slate-900 flex items-center gap-2">
+                          <div className="h-7 w-7 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-extrabold text-[11px]">
+                            {room.name.substring(0, 3)}
+                          </div>
+                          {room.name}
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                            room.type === 'TP' ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                            room.type === 'TD' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' :
+                            'bg-emerald-50 border-emerald-100 text-emerald-600'
+                          }`}>
+                            {room.type}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-650 font-semibold">{room.capacity} places</td>
+                        <td className="p-4 text-right flex justify-end gap-2">
+                          <button
+                            onClick={() => openEditRoomModal(room)}
+                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-indigo-600 transition-colors"
+                            title="Modifier"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRoom(room.id)}
+                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 text-rose-600 transition-colors"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-x-auto">
+                {loadingReservations ? (
+                  <div className="p-8 text-center text-xs text-slate-400">Chargement des réservations...</div>
+                ) : dbReservations.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400">Aucune réservation en cours ou passée.</div>
+                ) : (
+                  <table className="w-full min-w-[700px] border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="p-4">Date</th>
+                        <th className="p-4">Heures</th>
+                        <th className="p-4">Salle</th>
+                        <th className="p-4">Enseignant</th>
+                        <th className="p-4">Motif / Événement</th>
+                        <th className="p-4">Statut</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                      {dbReservations.map(res => (
+                        <tr key={res.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-4 font-semibold text-slate-900">{res.date}</td>
+                          <td className="p-4 text-slate-600 font-medium">
+                            {res.start_time.substring(0, 5)} - {res.end_time.substring(0, 5)}
+                          </td>
+                          <td className="p-4 font-bold text-slate-800">{res.room ? res.room.name : 'Inconnue'}</td>
+                          <td className="p-4 text-slate-650">{res.professor ? res.professor.name : 'Administrateur'}</td>
+                          <td className="p-4 text-slate-500 max-w-[200px] truncate" title={res.reason}>
+                            {res.reason || 'Aucun motif'}
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                              res.status === 'approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                              res.status === 'rejected' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                              'bg-amber-50 border-amber-100 text-amber-600'
+                            }`}>
+                              {res.status === 'approved' ? 'Approuvée' : res.status === 'rejected' ? 'Rejetée' : 'En attente'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right flex justify-end gap-2">
+                            {res.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveReservation(res.id)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-colors"
+                                >
+                                  <Check className="h-3 w-3" /> Accepter
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedResForRejection(res);
+                                    setRejectionReason('');
+                                    setIsRejectReservationModalOpen(true);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 font-bold text-[10px] flex items-center gap-1 transition-colors"
+                                >
+                                  <X className="h-3 w-3" /> Rejeter
+                                </button>
+                              </>
+                            )}
+                            {res.status !== 'pending' && (
+                              <span className="text-slate-400 text-[10px] font-bold uppercase italic py-1 px-2">Traité</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Saisie des Notes */}
+        {activeTab === 'grades_mgmt' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Header / Selector Panel */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <h2 className="text-base font-bold text-slate-900">Saisie et Consultation des Notes</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Saisissez les notes de CC1, CC2 et d'Examen par classe et matière</p>
+              </div>
+            </div>
+
+            {/* Selectors grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Sélectionner Filière</label>
+                <select
+                  value={gradesMgmtFieldId}
+                  onChange={e => {
+                    setGradesMgmtFieldId(e.target.value);
+                    setGradesMgmtGroupId('');
+                    setGradesMgmtModuleId('');
+                  }}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold uppercase transition-all"
+                >
+                  <option value="">Toutes les Filières</option>
+                  {dbFields.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Sélectionner Classe</label>
+                <select
+                  value={gradesMgmtGroupId}
+                  onChange={e => setGradesMgmtGroupId(e.target.value)}
+                  disabled={!gradesMgmtFieldId}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">Sélectionner Classe...</option>
+                  {dbGroups
+                    .filter(g => g.field_id === parseInt(gradesMgmtFieldId))
+                    .map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))
+                  }
+                </select>
+              </div>
+
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Sélectionner Matière</label>
+                <select
+                  value={gradesMgmtModuleId}
+                  onChange={e => setGradesMgmtModuleId(e.target.value)}
+                  disabled={!gradesMgmtFieldId}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">Sélectionner Matière...</option>
+                  {modules
+                    .filter(m => m.fields && m.fields.some(f => f.id === parseInt(gradesMgmtFieldId)))
+                    .map(m => (
+                      <option key={m.id} value={m.id}>[{m.code}] {m.name}</option>
+                    ))
+                  }
+                </select>
+              </div>
+            </div>
+
+            {/* Error and Success messages */}
+            {gradesMgmtError && (
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                ⚠️ {gradesMgmtError}
+              </div>
+            )}
+
+            {gradesMgmtSuccessMsg && (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+                🎉 {gradesMgmtSuccessMsg}
+              </div>
+            )}
+
+            {/* Grid display */}
+            {gradesMgmtLoading ? (
+              <div className="p-8 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                Chargement des étudiants et des notes...
+              </div>
+            ) : !gradesMgmtGroupId || !gradesMgmtModuleId ? (
+              <div className="p-8 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                Veuillez sélectionner une Filière, une Classe et une Matière pour commencer la saisie.
+              </div>
+            ) : gradesMgmtStudents.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                Aucun étudiant inscrit dans cette classe.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-x-auto">
+                  <table className="w-full min-w-[700px] border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="p-4">Étudiant</th>
+                        <th className="p-4 w-32">Note CC1 (20%)</th>
+                        <th className="p-4 w-32">Note CC2 (20%)</th>
+                        <th className="p-4 w-32">Examen (60%)</th>
+                        <th className="p-4 w-32">Note Finale</th>
+                        <th className="p-4">Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                      {gradesMgmtStudents.map(student => {
+                        const finalGrade = Number(student.final_grade);
+                        const isValidated = !isNaN(finalGrade) && finalGrade >= 10;
+                        return (
+                          <tr key={student.student_id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-4 font-bold text-slate-900">{student.student_name}</td>
+                            <td className="p-4">
+                              <input
+                                type="number"
+                                min="0"
+                                max="20"
+                                step="0.25"
+                                value={student.cc1}
+                                onChange={e => handleGradeInputChange(student.student_id, 'cc1', e.target.value)}
+                                className="w-20 px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-center font-bold text-xs focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 outline-none transition-all"
+                                placeholder="--"
+                              />
+                            </td>
+                            <td className="p-4">
+                              <input
+                                type="number"
+                                min="0"
+                                max="20"
+                                step="0.25"
+                                value={student.cc2}
+                                onChange={e => handleGradeInputChange(student.student_id, 'cc2', e.target.value)}
+                                className="w-20 px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-center font-bold text-xs focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 outline-none transition-all"
+                                placeholder="--"
+                              />
+                            </td>
+                            <td className="p-4">
+                              <input
+                                type="number"
+                                min="0"
+                                max="20"
+                                step="0.25"
+                                value={student.exam}
+                                onChange={e => handleGradeInputChange(student.student_id, 'exam', e.target.value)}
+                                className="w-20 px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 text-center font-bold text-xs focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 outline-none transition-all"
+                                placeholder="--"
+                              />
+                            </td>
+                            <td className="p-4 font-extrabold text-slate-900 text-center w-32">
+                              {isNaN(finalGrade) ? '0.00' : finalGrade.toFixed(2)}
+                            </td>
+                            <td className="p-4">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                                isValidated
+                                  ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
+                                  : 'bg-rose-50 border-rose-100 text-rose-600'
+                              }`}>
+                                {isValidated ? 'Validé' : 'Rattrapage'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex justify-end p-2">
+                  <button
+                    onClick={handleSaveGradesMgmt}
+                    disabled={gradesMgmtSaving}
+                    className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold text-xs transition-all shadow-lg shadow-indigo-650/20 flex items-center gap-2"
+                  >
+                    {gradesMgmtSaving ? (
+                      <>Enregistrement en cours...</>
+                    ) : (
+                      <>
+                        <Award className="h-4 w-4" />
+                        Enregistrer la Grille
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Polymorphic Profile Form Modal */}
@@ -3583,6 +4189,147 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Ajouter / Modifier une Salle */}
+      {isRoomModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-scaleUp">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {editingRoom ? "Modifier la Salle" : "Ajouter une Salle"}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Configurez les caractéristiques de la salle</p>
+              </div>
+              <button 
+                onClick={() => setIsRoomModalOpen(false)}
+                className="p-1.5 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveRoom}>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nom de la Salle *</label>
+                  <input
+                    type="text"
+                    required
+                    value={roomFormName}
+                    onChange={e => setRoomFormName(e.target.value)}
+                    placeholder="Ex: Amphi A, Salle 102..."
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none text-xs text-slate-700 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type de Salle *</label>
+                  <select
+                    value={roomFormType}
+                    onChange={e => setRoomFormType(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none text-xs text-slate-700 transition-all font-semibold"
+                  >
+                    <option value="TD">Salle de TD</option>
+                    <option value="TP">Salle de TP</option>
+                    <option value="Amphithéâtre">Amphithéâtre</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Capacité (places) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={roomFormCapacity}
+                    onChange={e => setRoomFormCapacity(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none text-xs text-slate-700 transition-all"
+                  />
+                </div>
+
+                {roomFormError && (
+                  <div className="px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                    ⚠️ {roomFormError}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 justify-end p-6 border-t border-slate-100 bg-slate-50/20">
+                <button
+                  type="button"
+                  onClick={() => setIsRoomModalOpen(false)}
+                  className="py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-bold transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={roomFormSaving}
+                  className="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold text-xs transition-colors shadow-md shadow-indigo-600/10"
+                >
+                  {roomFormSaving ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Motif de rejet de réservation */}
+      {isRejectReservationModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-scaleUp">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Rejeter la Réservation</h3>
+                <p className="text-xs text-slate-500 mt-1">Indiquez la raison du rejet pour l'enseignant</p>
+              </div>
+              <button 
+                onClick={() => setIsRejectReservationModalOpen(false)}
+                className="p-1.5 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRejectReservation}>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Motif du Refus *</label>
+                  <textarea
+                    required
+                    rows="3"
+                    value={rejectionReason}
+                    onChange={e => setRejectionReason(e.target.value)}
+                    placeholder="Ex: Conflit avec un cours de la filière GINFO, travaux planifiés..."
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none text-xs text-slate-700 transition-all resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end p-6 border-t border-slate-100 bg-slate-50/20">
+                <button
+                  type="button"
+                  onClick={() => setIsRejectReservationModalOpen(false)}
+                  className="py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 text-xs font-bold transition-all"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="py-2.5 px-5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-md shadow-rose-600/10"
+                >
+                  Rejeter la demande
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
