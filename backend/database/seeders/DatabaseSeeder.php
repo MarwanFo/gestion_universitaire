@@ -13,6 +13,8 @@ use App\Models\Absence;
 use App\Models\Announcement;
 use App\Models\Comment;
 use App\Models\DocumentRequest;
+use App\Models\StudentProfile;
+use App\Models\ProfessorProfile;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -23,121 +25,285 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // 0. Buildings
+        $buildingA = \App\Models\Building::create(['name' => 'Bâtiment A (Sciences)']);
+        $buildingB = \App\Models\Building::create(['name' => 'Bâtiment B (Technologie)']);
+        $buildingC = \App\Models\Building::create(['name' => 'Bâtiment C (Business & Management)']);
+
         // 1. Fields
         $field = Field::create([
             'name' => 'Génie Informatique',
             'code' => 'GINFO',
+            'cycle' => 'INGENIEUR',
+            'duration' => 3,
         ]);
 
-        // 2. Groups
+        Field::create([
+            'name' => 'Génie Civil',
+            'code' => 'GCIVIL',
+            'cycle' => 'INGENIEUR',
+            'duration' => 3,
+        ]);
+
+        Field::create([
+            'name' => 'Management & Commerce',
+            'code' => 'MGT',
+            'cycle' => 'LICENCE',
+            'duration' => 3,
+        ]);
+
+        Field::create([
+            'name' => 'Classe Préparatoire',
+            'code' => 'PREPA-MPSI',
+            'cycle' => 'PREPA',
+            'duration' => 2,
+        ]);
+
+        Field::create([
+            'name' => 'Master Intelligence Artificielle',
+            'code' => 'M-IA',
+            'cycle' => 'MASTER',
+            'duration' => 2,
+        ]);
+
+        // 2. Rooms
+        $room101 = Room::create(['name' => 'Salle 101', 'type' => 'TD', 'capacity' => 40]);
+        $room102 = Room::create(['name' => 'Salle 102', 'type' => 'TD', 'capacity' => 30]);
+        $roomAmphi = Room::create(['name' => 'Amphi A', 'type' => 'Amphithéâtre', 'capacity' => 150]);
+        $roomLab = Room::create(['name' => 'Labo Info 1', 'type' => 'TP', 'capacity' => 25]);
+
+        // 3. Groups
         $group3A = Group::create([
             'name' => 'GINFO-3A',
+            'level' => 3,
+            'academic_year' => '2025-2026',
+            'room_id' => $room102->id,
             'field_id' => $field->id,
         ]);
 
         $group2A = Group::create([
             'name' => 'GINFO-2A',
+            'level' => 2,
+            'academic_year' => '2025-2026',
+            'room_id' => $room101->id,
             'field_id' => $field->id,
         ]);
 
         // 3. Users (Admin, Professors, Students)
         $admin = User::create([
-            'name' => 'Directeur Académique',
+            'first_name' => 'Directeur',
+            'last_name' => 'Académique',
             'email' => 'admin@upf.ac.ma',
             'password' => Hash::make('Password123'),
             'role' => 'admin',
+            'cin' => 'AB123456',
+            'phone' => '0600000001',
+            'is_active' => true,
         ]);
 
+        // Professors
         $profBenjelloun = User::create([
-            'name' => 'Prof. Benjelloun',
+            'first_name' => 'Prof.',
+            'last_name' => 'Benjelloun',
             'email' => 'prof.benjelloun@upf.ac.ma',
             'password' => Hash::make('Password123'),
             'role' => 'professor',
+            'cin' => 'CD123456',
+            'phone' => '0600000002',
+            'is_active' => true,
+        ]);
+        ProfessorProfile::create([
+            'user_id' => $profBenjelloun->id,
+            'speciality' => 'Génie Logiciel & Technologies Web',
+            'department' => 'Sciences de l\'Ingénieur',
+            'employment_type' => 'permanent',
+            'office' => 'Bureau A12',
         ]);
 
         $profTazi = User::create([
-            'name' => 'Prof. Tazi',
+            'first_name' => 'Prof.',
+            'last_name' => 'Tazi',
             'email' => 'prof.tazi@upf.ac.ma',
             'password' => Hash::make('Password123'),
             'role' => 'professor',
+            'cin' => 'EF123456',
+            'phone' => '0600000003',
+            'is_active' => true,
+        ]);
+        ProfessorProfile::create([
+            'user_id' => $profTazi->id,
+            'speciality' => 'Bases de données & Systèmes complexes',
+            'department' => 'Sciences de l\'Ingénieur',
+            'employment_type' => 'permanent',
+            'office' => 'Bureau A14',
         ]);
 
         // Students 3A
         $studentAlami = User::create([
-            'name' => 'Marwan Alami',
+            'first_name' => 'Marwan',
+            'last_name' => 'Alami',
             'email' => 'student.alami@upf.ac.ma',
             'password' => Hash::make('Password123'),
             'role' => 'student',
+            'cin' => 'GH123456',
+            'phone' => '0600000004',
+            'is_active' => true,
+        ]);
+        StudentProfile::create([
+            'user_id' => $studentAlami->id,
+            'cne' => '1234567890',
+            'enrollment_year' => 2023,
+            'bac_type' => 'Sciences Physiques',
+            'bac_grade' => 16.5,
+            'level' => 3,
             'group_id' => $group3A->id,
+            'field_id' => $field->id,
         ]);
 
         $studentKamali = User::create([
-            'name' => 'Sara Kamali',
+            'first_name' => 'Sara',
+            'last_name' => 'Kamali',
             'email' => 'student.kamali@upf.ac.ma',
             'password' => Hash::make('Password123'),
             'role' => 'student',
+            'cin' => 'IJ123456',
+            'phone' => '0600000005',
+            'is_active' => true,
+        ]);
+        StudentProfile::create([
+            'user_id' => $studentKamali->id,
+            'cne' => '0987654321',
+            'enrollment_year' => 2023,
+            'bac_type' => 'Sciences Mathématiques B',
+            'bac_grade' => 17.2,
+            'level' => 3,
             'group_id' => $group3A->id,
+            'field_id' => $field->id,
         ]);
 
         $studentBennani = User::create([
-            'name' => 'Youssef Bennani',
+            'first_name' => 'Youssef',
+            'last_name' => 'Bennani',
             'email' => 'student.bennani@upf.ac.ma',
             'password' => Hash::make('Password123'),
             'role' => 'student',
+            'cin' => 'KL123456',
+            'phone' => '0600000006',
+            'is_active' => true,
+        ]);
+        StudentProfile::create([
+            'user_id' => $studentBennani->id,
+            'cne' => '1122334455',
+            'enrollment_year' => 2023,
+            'bac_type' => 'Sciences Physiques',
+            'bac_grade' => 14.8,
+            'level' => 3,
             'group_id' => $group3A->id,
+            'field_id' => $field->id,
         ]);
 
         // Students 2A
         $studentTazi = User::create([
-            'name' => 'Anas Tazi',
+            'first_name' => 'Anas',
+            'last_name' => 'Tazi',
             'email' => 'student.tazi@upf.ac.ma',
             'password' => Hash::make('Password123'),
             'role' => 'student',
+            'cin' => 'MN123456',
+            'phone' => '0600000007',
+            'is_active' => true,
+        ]);
+        StudentProfile::create([
+            'user_id' => $studentTazi->id,
+            'cne' => '2233445566',
+            'enrollment_year' => 2024,
+            'bac_type' => 'Sciences Mathématiques A',
+            'bac_grade' => 15.9,
+            'level' => 2,
             'group_id' => $group2A->id,
+            'field_id' => $field->id,
         ]);
 
         $studentFilali = User::create([
-            'name' => 'Lina Filali',
+            'first_name' => 'Lina',
+            'last_name' => 'Filali',
             'email' => 'student.filali@upf.ac.ma',
             'password' => Hash::make('Password123'),
             'role' => 'student',
+            'cin' => 'OP123456',
+            'phone' => '0600000008',
+            'is_active' => true,
+        ]);
+        StudentProfile::create([
+            'user_id' => $studentFilali->id,
+            'cne' => '3344556677',
+            'enrollment_year' => 2024,
+            'bac_type' => 'Sciences Physiques',
+            'bac_grade' => 15.3,
+            'level' => 2,
             'group_id' => $group2A->id,
+            'field_id' => $field->id,
         ]);
 
         // 4. Modules
+        $fieldMia = Field::where('code', 'M-IA')->first();
+
         $moduleWeb = Module::create([
             'name' => 'Technologie Web 2 (React & Laravel)',
             'code' => 'GINFO-TW2',
-            'field_id' => $field->id,
+            'credits' => 6,
+            'coefficient' => 3.00,
+            'semester' => 'S2',
+            'type' => 'STANDARD',
             'professor_id' => $profBenjelloun->id,
         ]);
+        $moduleWeb->fields()->attach([$field->id, $fieldMia->id]);
 
         $moduleDb = Module::create([
             'name' => 'Base de données Avancées (Postgres)',
             'code' => 'GINFO-DB',
-            'field_id' => $field->id,
+            'credits' => 4,
+            'coefficient' => 2.00,
+            'semester' => 'S1',
+            'type' => 'STANDARD',
             'professor_id' => $profTazi->id,
         ]);
+        $moduleDb->fields()->attach([$field->id]);
 
         $moduleAgile = Module::create([
             'name' => 'Management de Projet Agile',
             'code' => 'GINFO-AGILE',
-            'field_id' => $field->id,
+            'credits' => 4,
+            'coefficient' => 1.50,
+            'semester' => 'S1',
+            'type' => 'STANDARD',
             'professor_id' => $profBenjelloun->id,
         ]);
+        $moduleAgile->fields()->attach([$field->id]);
 
         $moduleNetwork = Module::create([
             'name' => 'Réseaux & Protocoles',
             'code' => 'GINFO-NET',
-            'field_id' => $field->id,
+            'credits' => 4,
+            'coefficient' => 2.00,
+            'semester' => 'S1',
+            'type' => 'STANDARD',
             'professor_id' => $profTazi->id,
         ]);
+        $moduleNetwork->fields()->attach([$field->id]);
 
-        // 5. Rooms
-        $room101 = Room::create(['name' => 'Salle 101', 'type' => 'Cours', 'capacity' => 40]);
-        $room102 = Room::create(['name' => 'Salle 102', 'type' => 'TD', 'capacity' => 30]);
-        $roomAmphi = Room::create(['name' => 'Amphi A', 'type' => 'Amphithéâtre', 'capacity' => 150]);
-        $roomLab = Room::create(['name' => 'Labo Info 1', 'type' => 'TP', 'capacity' => 25]);
+        $modulePfa = Module::create([
+            'name' => 'Projet de Fin d\'Année',
+            'code' => 'GINFO-PFA',
+            'credits' => 8,
+            'coefficient' => 4.00,
+            'semester' => 'S2',
+            'type' => 'PFA',
+            'professor_id' => $profBenjelloun->id,
+        ]);
+        $modulePfa->fields()->attach([$field->id]);
+
+        // 5. Rooms (Already created above)
 
         // 6. Timetables
         $t1 = Timetable::create([

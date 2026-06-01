@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -20,11 +21,15 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'email',
         'password',
+        'cin',
+        'phone',
+        'avatar_path',
         'role',
-        'group_id',
+        'is_active',
     ];
 
     /**
@@ -37,6 +42,8 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $with = ['studentProfile', 'professorProfile'];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -47,12 +54,52 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 
-    public function group()
+    /**
+     * Appends to serialized output.
+     */
+    protected $appends = ['name', 'group_id', 'group'];
+
+    /**
+     * Accessor for full name to maintain backward compatibility.
+     */
+    public function getNameAttribute()
     {
-        return $this->belongsTo(Group::class);
+        return trim($this->first_name . ' ' . $this->last_name);
+    }
+
+    /**
+     * Accessor for group_id to maintain backward compatibility.
+     */
+    public function getGroupIdAttribute()
+    {
+        return $this->studentProfile ? $this->studentProfile->group_id : null;
+    }
+
+    /**
+     * Accessor for group to maintain backward compatibility.
+     */
+    public function getGroupAttribute()
+    {
+        return $this->studentProfile ? $this->studentProfile->group : null;
+    }
+
+    public function studentProfile(): HasOne
+    {
+        return $this->hasOne(StudentProfile::class);
+    }
+
+    public function professorProfile(): HasOne
+    {
+        return $this->hasOne(ProfessorProfile::class);
+    }
+
+    public function fields()
+    {
+        return $this->belongsToMany(Field::class, 'field_user');
     }
 
     public function grades()

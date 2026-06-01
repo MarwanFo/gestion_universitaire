@@ -16,6 +16,7 @@ import {
 export default function Accueil() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const handleCTA = () => {
     if (user) {
@@ -54,14 +55,53 @@ export default function Accueil() {
             <a href="#stats" className="hover:text-slate-900 transition-colors duration-200">Chiffres</a>
           </nav>
 
-          <button
-            onClick={handleCTA}
-            className="px-5 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all duration-200 flex items-center gap-2 group shadow-sm"
-          >
-            {user ? 'Mon Espace' : 'Connexion'}
-            <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCTA}
+              className="px-5 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all duration-200 flex items-center gap-2 group shadow-sm"
+            >
+              {user ? 'Mon Espace' : 'Connexion'}
+              <ArrowRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            {/* Mobile Hamburger toggle */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors text-slate-600"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden mt-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-lg shadow-slate-100/50 flex flex-col gap-3 animate-fadeIn">
+            <a 
+              href="#features" 
+              onClick={() => setIsMenuOpen(false)}
+              className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 font-semibold text-xs transition-all uppercase tracking-wider"
+            >
+              Espaces
+            </a>
+            <a 
+              href="#services" 
+              onClick={() => setIsMenuOpen(false)}
+              className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 font-semibold text-xs transition-all uppercase tracking-wider"
+            >
+              Services
+            </a>
+            <a 
+              href="#stats" 
+              onClick={() => setIsMenuOpen(false)}
+              className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-indigo-600 font-semibold text-xs transition-all uppercase tracking-wider"
+            >
+              Chiffres
+            </a>
+          </div>
+        )}
       </header>
 
       {/* Hero Section */}
@@ -84,15 +124,9 @@ export default function Accueil() {
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-            <button
-              onClick={handleCTA}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:opacity-95 text-white font-semibold text-base transition-all duration-300 shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/25 hover:-translate-y-0.5"
-            >
-              Accéder au Portail Académique
-            </button>
             <a
               href="#features"
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 font-semibold text-base transition-all duration-300 hover:bg-slate-50 text-center shadow-sm"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:opacity-95 text-white font-semibold text-base transition-all duration-300 shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/25 hover:-translate-y-0.5 text-center"
             >
               Découvrir les Espaces
             </a>
@@ -112,7 +146,7 @@ export default function Accueil() {
               <span className="block text-3xl sm:text-4xl font-extrabold text-slate-900">100%</span>
               <span className="text-xs sm:text-sm text-slate-500 uppercase font-semibold tracking-wider mt-1 block">Suivi Numérique</span>
             </div>
-            <div className="text-center p-4 border-l border-slate-100">
+            <div className="text-center p-4 md:border-l border-slate-100">
               <span className="block text-3xl sm:text-4xl font-extrabold text-slate-900">0%</span>
               <span className="text-xs sm:text-sm text-slate-500 uppercase font-semibold tracking-wider mt-1 block">Conflit de Réservation</span>
             </div>

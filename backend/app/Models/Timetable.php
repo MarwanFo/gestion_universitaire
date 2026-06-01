@@ -12,7 +12,11 @@ class Timetable extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['module_id', 'group_id', 'room_id', 'day', 'start_time', 'end_time'];
+    protected $fillable = ['module_id', 'group_id', 'room_id', 'day', 'start_time', 'end_time', 'is_published'];
+
+    protected $casts = [
+        'is_published' => 'boolean'
+    ];
 
     public function module(): BelongsTo
     {

@@ -44,21 +44,33 @@ export default function StudentDashboard() {
   const [selectedDocType, setSelectedDocType] = useState('Attestation de scolarité');
   const [docNotification, setDocNotification] = useState('');
 
+  // 4. Timetable State
+  const [timetable, setTimetable] = useState([
+    { day: 'Lundi', slots: [] },
+    { day: 'Mardi', slots: [] },
+    { day: 'Mercredi', slots: [] },
+    { day: 'Jeudi', slots: [] },
+    { day: 'Vendredi', slots: [] }
+  ]);
+
   // Fetch API data on load
   useEffect(() => {
     const fetchStudentData = async () => {
       try {
         const gradesRes = await api.get('/grades');
         if (gradesRes.data.length > 0) {
-          setGrades(gradesRes.data.map(g => ({
-            id: g.id,
-            module: g.module ? g.module.name : 'Module',
-            cc1: g.cc1 || 0,
-            cc2: g.cc2 || 0,
-            exam: g.exam || 0,
-            average: g.final_grade || 0,
-            status: (g.final_grade || 0) >= 12 ? 'Validé avec Ment.' : (g.final_grade || 0) >= 10 ? 'Validé' : 'Non Validé'
-          })));
+          setGrades(gradesRes.data.map(g => {
+            const finalGrade = Number(g.final_grade) || 0;
+            return {
+              id: g.id,
+              module: g.module ? g.module.name : 'Module',
+              cc1: Number(g.cc1) || 0,
+              cc2: Number(g.cc2) || 0,
+              exam: Number(g.exam) || 0,
+              average: finalGrade,
+              status: finalGrade >= 12 ? 'Validé avec Ment.' : finalGrade >= 10 ? 'Validé' : 'Non Validé'
+            };
+          }));
         }
 
         const absencesRes = await api.get('/absences');
@@ -83,6 +95,11 @@ export default function StudentDashboard() {
             status: doc.status === 'pending' ? 'En attente' :
                     doc.status === 'approved' ? 'Approuvée' : 'Rejetée'
           })));
+        }
+
+        const timetableRes = await api.get('/timetables');
+        if (timetableRes.data.length > 0) {
+          setTimetable(timetableRes.data);
         }
       } catch (e) {
         console.warn("Could not retrieve student info from database API, using mock state fallback.", e);
@@ -146,15 +163,6 @@ export default function StudentDashboard() {
   const handleDownloadPDF = (docType) => {
     alert(`Téléchargement en cours du PDF officiel signé numériquement : ${docType}`);
   };
-
-  // 4. Timetable Mock State
-  const timetable = [
-    { day: 'Lundi', slots: [{ time: '09:00 - 11:00', module: 'Réseaux & Protocoles', room: 'Salle 102' }, { time: '14:00 - 16:00', module: 'Management Agile', room: 'Salle 101' }] },
-    { day: 'Mardi', slots: [{ time: '11:00 - 13:00', module: 'Base de données', room: 'Labo Info 1' }] },
-    { day: 'Mercredi', slots: [{ time: '09:00 - 11:00', module: 'Technologie Web 2', room: 'Labo Info 1' }, { time: '14:00 - 16:00', module: 'Technologie Web 2', room: 'Amphi A' }] },
-    { day: 'Jeudi', slots: [] },
-    { day: 'Vendredi', slots: [{ time: '09:00 - 11:00', module: 'Réseaux & Protocoles', room: 'Salle 102' }] }
-  ];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex relative overflow-hidden">
@@ -247,7 +255,7 @@ export default function StudentDashboard() {
               Étudiant
             </span>
             <span className="text-slate-300 text-xs">|</span>
-            <span className="text-slate-550 text-xs font-semibold">{user?.group || 'GINFO-3A'}</span>
+            <span className="text-slate-555 text-xs font-semibold">{user?.group?.name || user?.group || 'GINFO-3A'}</span>
             <span className="text-slate-300 text-xs">|</span>
             <span className="text-slate-700 text-xs font-semibold">{user?.name}</span>
           </div>
@@ -284,10 +292,10 @@ export default function StudentDashboard() {
                   {grades.map(g => (
                     <tr key={g.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 font-semibold text-slate-900">{g.module}</td>
-                      <td className="p-4 text-center text-slate-600 font-medium">{g.cc1.toFixed(2)}</td>
-                      <td className="p-4 text-center text-slate-600 font-medium">{g.cc2.toFixed(2)}</td>
-                      <td className="p-4 text-center text-slate-600 font-medium">{g.exam.toFixed(2)}</td>
-                      <td className="p-4 text-center font-bold text-slate-900">{g.average.toFixed(2)}</td>
+                      <td className="p-4 text-center text-slate-600 font-medium">{Number(g.cc1 || 0).toFixed(2)}</td>
+                      <td className="p-4 text-center text-slate-600 font-medium">{Number(g.cc2 || 0).toFixed(2)}</td>
+                      <td className="p-4 text-center text-slate-600 font-medium">{Number(g.exam || 0).toFixed(2)}</td>
+                      <td className="p-4 text-center font-bold text-slate-900">{Number(g.average || 0).toFixed(2)}</td>
                       <td className="p-4 text-right">
                         <span className={`inline-block px-2.5 py-0.5 rounded border text-[9px] font-extrabold uppercase ${
                           g.average >= 14 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
@@ -371,30 +379,43 @@ export default function StudentDashboard() {
         )}
 
         {/* Tab 3: Timetable */}
-        {activeTab === 'timetable' && (
-          <div className="space-y-6 animate-fadeIn">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {timetable.map((dayPlan, i) => (
-                <div key={i} className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-                  <span className="block border-b border-slate-200 pb-2 font-bold text-slate-900 text-xs text-center uppercase tracking-wider">{dayPlan.day}</span>
-                  <div className="mt-4 space-y-3">
-                    {dayPlan.slots.length > 0 ? (
-                      dayPlan.slots.map((slot, j) => (
-                        <div key={j} className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
-                          <span className="block text-[8px] font-bold text-indigo-600">{slot.time}</span>
-                          <span className="block text-[10px] font-bold text-slate-800 leading-snug">{slot.module}</span>
-                          <span className="block text-[9px] text-slate-500 font-medium">{slot.room}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <span className="block text-center text-slate-400 text-[10px] py-4 italic">Aucun cours</span>
-                    )}
-                  </div>
+        {activeTab === 'timetable' && (() => {
+          const totalSlotsCount = timetable.reduce((acc, d) => acc + (d.slots?.length || 0), 0);
+          return (
+            <div className="space-y-6 animate-fadeIn">
+              {totalSlotsCount === 0 ? (
+                <div className="p-8 rounded-2xl bg-amber-50/50 border border-amber-200/80 shadow-sm text-center max-w-xl mx-auto space-y-3 my-12">
+                  <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
+                  <h3 className="font-bold text-slate-800 text-sm">Emploi du temps non disponible</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Votre emploi du temps n'a pas encore été publié par l'administration ou aucun cours n'est actuellement planifié pour votre classe.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {timetable.map((dayPlan, i) => (
+                    <div key={i} className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
+                      <span className="block border-b border-slate-200 pb-2 font-bold text-slate-900 text-xs text-center uppercase tracking-wider">{dayPlan.day}</span>
+                      <div className="mt-4 space-y-3">
+                        {dayPlan.slots.length > 0 ? (
+                          dayPlan.slots.map((slot, j) => (
+                            <div key={j} className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
+                              <span className="block text-[8px] font-bold text-indigo-600">{slot.time}</span>
+                              <span className="block text-[10px] font-bold text-slate-800 leading-snug">{slot.module}</span>
+                              <span className="block text-[9px] text-slate-500 font-medium">{slot.room}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="block text-center text-slate-400 text-[10px] py-4 italic">Aucun cours</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Tab 4: Administrative Documents Requests */}
         {activeTab === 'documents' && (

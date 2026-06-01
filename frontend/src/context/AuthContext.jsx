@@ -60,6 +60,12 @@ export const AuthProvider = ({ children }) => {
         }
 
         if (mockUser) {
+          if (mockUser.role === 'admin' && !isAdminLogin) {
+            return { success: false, message: "Les administrateurs doivent utiliser le portail d'administration sécurisé." };
+          }
+          if (mockUser.role !== 'admin' && isAdminLogin) {
+            return { success: false, message: "Accès refusé. Ce portail est réservé exclusivement aux administrateurs." };
+          }
           localStorage.setItem('token', 'mock-jwt-token-for-demo');
           localStorage.setItem('user', JSON.stringify(mockUser));
           setUser(mockUser);
@@ -104,5 +110,17 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    return {
+      user: null,
+      loading: false,
+      login: async () => ({ success: false, message: "Auth provider is missing" }),
+      logout: async () => {},
+      isAdmin: false,
+      isProfessor: false,
+      isStudent: false
+    };
+  }
+  return context;
 };

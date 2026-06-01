@@ -69,6 +69,6 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        return response()->json($request->user()->load('group'));
+        return response()->json($request->user()->load(['studentProfile.group', 'studentProfile.field', 'professorProfile', 'fields']));
     }
 }

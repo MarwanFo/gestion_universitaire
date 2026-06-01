@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('fields', function (Blueprint $table) {
+        Schema::create('field_module', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('code')->unique();
-            $table->enum('cycle', ['LICENCE', 'MASTER', 'INGENIEUR', 'PREPA']);
-            $table->integer('duration'); // in years
+            $table->foreignId('field_id')->constrained('fields')->onDelete('cascade');
+            $table->foreignId('module_id')->constrained('modules')->onDelete('cascade');
             $table->timestamps();
+
+            // Unique field-module combination
+            $table->unique(['field_id', 'module_id']);
         });
     }
 
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('fields');
+        Schema::dropIfExists('field_module');
     }
 };

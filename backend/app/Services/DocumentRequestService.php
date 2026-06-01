@@ -11,7 +11,7 @@ class DocumentRequestService
      */
     public function getAllRequests()
     {
-        return DocumentRequest::with('user.group')
+        return DocumentRequest::with('user.studentProfile')
             ->orderBy('created_at', 'desc')
             ->get();
     }

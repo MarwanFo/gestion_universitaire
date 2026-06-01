@@ -53,7 +53,11 @@ class GradeService
      */
     public function getGroupGrades(int $groupId, int $moduleId)
     {
-        $students = User::where('group_id', $groupId)->where('role', 'student')->get();
+        $students = User::where('role', 'student')
+            ->whereHas('studentProfile', function ($query) use ($groupId) {
+                $query->where('group_id', $groupId);
+            })
+            ->get();
         
         $grades = Grade::where('module_id', $moduleId)
             ->whereIn('student_id', $students->pluck('id'))

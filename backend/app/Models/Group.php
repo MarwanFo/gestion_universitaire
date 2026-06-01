@@ -11,16 +11,21 @@ class Group extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'field_id'];
+    protected $fillable = ['name', 'level', 'academic_year', 'room_id', 'field_id'];
 
     public function field(): BelongsTo
     {
         return $this->belongsTo(Field::class);
     }
 
-    public function students(): HasMany
+    public function room(): BelongsTo
     {
-        return $this->hasMany(User::class, 'group_id');
+        return $this->belongsTo(Room::class);
+    }
+
+    public function studentProfiles(): HasMany
+    {
+        return $this->hasMany(StudentProfile::class, 'group_id');
     }
 
     public function timetables(): HasMany
