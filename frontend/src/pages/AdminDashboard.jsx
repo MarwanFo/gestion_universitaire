@@ -1218,6 +1218,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const studentUsers = users.filter(u => u.role === 'student');
+  const filteredStudentsForAbsences = studentUsers.filter(u => {
+    const studentGroupId = u.student_profile?.group_id;
+    if (!absencesClassFilter) return true;
+    return studentGroupId === parseInt(absencesClassFilter);
+  });
+
+  const getUnjustifiedAbsencesCount = (studentId) => {
+    return dbAbsences.filter(a => 
+      a.student_id === studentId && 
+      a.status === 'absent' && 
+      a.justification_status !== 'validated'
+    ).length;
+  };
+
+  const pendingAbsences = dbAbsences.filter(a => 
+    a.justification_path && 
+    a.justification_status === 'pending'
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col md:flex-row relative overflow-hidden">
       {/* Background Glows */}
@@ -3032,6 +3052,174 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tab: Suivi des Absences */}
+        {activeTab === 'absences_mgmt' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Header */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <h2 className="text-base font-bold text-slate-900">Suivi des Absences & Justificatifs</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Consultez le bilan des absences et traitez les demandes de justification médicale ou administrative</p>
+              </div>
+              <button
+                onClick={fetchAbsences}
+                disabled={loadingAbsences}
+                className="py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all flex items-center gap-2"
+              >
+                🔄 Actualiser
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+              {/* Partie A - Suivi Global */}
+              <div className="lg:col-span-2 space-y-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Bilan Global des Absences</h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Nombre total d'absences injustifiées par étudiant</p>
+                  </div>
+                  {/* Class Filter */}
+                  <div className="w-full sm:w-48">
+                    <select
+                      value={absencesClassFilter}
+                      onChange={e => setAbsencesClassFilter(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold transition-all"
+                    >
+                      <option value="">Toutes les classes</option>
+                      {dbGroups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th className="py-3 px-2">Étudiant</th>
+                        <th className="py-3 px-2">Classe</th>
+                        <th className="py-3 px-2 text-center">Absences Injustifiées</th>
+                        <th className="py-3 px-2">Bilan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 text-xs text-slate-700">
+                      {filteredStudentsForAbsences.length === 0 ? (
+                        <tr>
+                          <td colSpan="4" className="py-6 text-center text-slate-400">Aucun étudiant trouvé.</td>
+                        </tr>
+                      ) : (
+                        filteredStudentsForAbsences.map(student => {
+                          const unjustifiedCount = getUnjustifiedAbsencesCount(student.id);
+                          const groupObj = dbGroups.find(g => g.id === student.student_profile?.group_id);
+                          
+                          let badgeColor = 'bg-slate-50 text-slate-600 border-slate-200';
+                          if (unjustifiedCount >= 5) {
+                            badgeColor = 'bg-rose-50 text-rose-600 border-rose-100';
+                          } else if (unjustifiedCount >= 3) {
+                            badgeColor = 'bg-amber-50 text-amber-600 border-amber-100';
+                          } else if (unjustifiedCount > 0) {
+                            badgeColor = 'bg-indigo-50 text-indigo-600 border-indigo-100';
+                          }
+
+                          return (
+                            <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-2 font-bold text-slate-900">{student.name}</td>
+                              <td className="py-3 px-2 text-slate-500">{groupObj ? groupObj.name : 'N/A'}</td>
+                              <td className="py-3 px-2 text-center">
+                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${badgeColor}`}>
+                                  {unjustifiedCount}
+                                </span>
+                              </td>
+                              <td className="py-3 px-2">
+                                {unjustifiedCount >= 5 ? (
+                                  <span className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">⚠️ Risque d'exclusion</span>
+                                ) : unjustifiedCount >= 3 ? (
+                                  <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">Avertissement</span>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">En règle</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Partie B - Justificatifs à traiter */}
+              <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Justificatifs en Attente</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Demandes à valider ou rejeter</p>
+                </div>
+
+                <div className="space-y-4">
+                  {pendingAbsences.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      Aucun justificatif en attente de traitement.
+                    </div>
+                  ) : (
+                    pendingAbsences.map(absence => (
+                      <div key={absence.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-3 shadow-sm hover:border-slate-200 transition-all">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="text-xs font-extrabold text-slate-900">{absence.student?.name}</h4>
+                            <p className="text-[10px] text-slate-400">{absence.date}</p>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-amber-100 text-amber-800">
+                            En attente
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] text-slate-600 space-y-1">
+                          <p><strong>Matière :</strong> {absence.timetable?.module?.name || 'N/A'}</p>
+                          <p className="italic bg-white p-2 rounded-lg border border-slate-100 mt-1">
+                            "{absence.rejection_reason || 'Aucun motif renseigné'}"
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedJustificationForModal(absence);
+                              setIsJustificationModalOpen(true);
+                            }}
+                            className="flex-1 py-1.5 px-3 rounded-lg border border-slate-200 hover:bg-white text-slate-600 text-[10px] font-bold transition-all text-center"
+                          >
+                            👁️ Voir Pièce
+                          </button>
+                          
+                          <button
+                            onClick={() => handleApproveJustification(absence.id)}
+                            className="py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-all"
+                            title="Accepter la justification"
+                          >
+                            Valider
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setSelectedAbsenceForRejection(absence);
+                              setIsRejectAbsenceModalOpen(true);
+                            }}
+                            className="py-1.5 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold transition-all"
+                            title="Rejeter la justification"
+                          >
+                            Rejeter
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
