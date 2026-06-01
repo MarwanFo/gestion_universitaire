@@ -197,6 +197,7 @@ export default function AdminDashboard() {
   // Absences Management states
   const [dbAbsences, setDbAbsences] = useState([]);
   const [loadingAbsences, setLoadingAbsences] = useState(false);
+  const [absencesFieldFilter, setAbsencesFieldFilter] = useState('');
   const [absencesClassFilter, setAbsencesClassFilter] = useState('');
   const [selectedJustificationForModal, setSelectedJustificationForModal] = useState(null);
   const [isJustificationModalOpen, setIsJustificationModalOpen] = useState(false);
@@ -1220,9 +1221,16 @@ export default function AdminDashboard() {
 
   const studentUsers = users.filter(u => u.role === 'student');
   const filteredStudentsForAbsences = studentUsers.filter(u => {
+    const studentFieldId = u.student_profile?.field_id;
     const studentGroupId = u.student_profile?.group_id;
-    if (!absencesClassFilter) return true;
-    return studentGroupId === parseInt(absencesClassFilter);
+
+    if (absencesFieldFilter && studentFieldId !== parseInt(absencesFieldFilter)) {
+      return false;
+    }
+    if (absencesClassFilter && studentGroupId !== parseInt(absencesClassFilter)) {
+      return false;
+    }
+    return true;
   });
 
   const getUnjustifiedAbsencesCount = (studentId) => {
@@ -3081,18 +3089,42 @@ export default function AdminDashboard() {
                     <h3 className="text-sm font-bold text-slate-900">Bilan Global des Absences</h3>
                     <p className="text-[11px] text-slate-500 mt-0.5">Nombre total d'absences injustifiées par étudiant</p>
                   </div>
-                  {/* Class Filter */}
-                  <div className="w-full sm:w-48">
-                    <select
-                      value={absencesClassFilter}
-                      onChange={e => setAbsencesClassFilter(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold transition-all"
-                    >
-                      <option value="">Toutes les classes</option>
-                      {dbGroups.map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                      ))}
-                    </select>
+                  {/* Aligned Cascade Dropdowns */}
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    {/* Select Filière */}
+                    <div className="w-full sm:w-48">
+                      <select
+                        value={absencesFieldFilter}
+                        onChange={e => {
+                          setAbsencesFieldFilter(e.target.value);
+                          setAbsencesClassFilter('');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold transition-all"
+                      >
+                        <option value="">Toutes les filières</option>
+                        {dbFields.map(f => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Select Classe */}
+                    <div className="w-full sm:w-48">
+                      <select
+                        value={absencesClassFilter}
+                        onChange={e => setAbsencesClassFilter(e.target.value)}
+                        disabled={!absencesFieldFilter}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Sélectionner Classe...</option>
+                        {dbGroups
+                          .filter(g => g.field_id === parseInt(absencesFieldFilter))
+                          .map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                          ))
+                        }
+                      </select>
+                    </div>
                   </div>
                 </div>
 
