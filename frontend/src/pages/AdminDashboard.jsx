@@ -36,6 +36,13 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const getFileUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    const baseUrl = api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '') : 'http://127.0.0.1:8000';
+    return `${baseUrl}/storage/${path}`;
+  };
+
   // Local State synchronized with API
   const [users, setUsers] = useState([]);
   const [fields, setFields] = useState([]);

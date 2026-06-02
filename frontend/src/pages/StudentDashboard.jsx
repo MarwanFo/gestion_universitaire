@@ -32,7 +32,8 @@ export default function StudentDashboard() {
     { id: 2, date: '2026-05-18', module: 'Technologie Web 2', hours: '2h', status: 'Justifiée' },
   ]);
 
-  const [justificationForm, setJustificationForm] = useState({ date: '', reason: '' });
+  const [justificationForm, setJustificationForm] = useState({ absenceId: '', reason: '' });
+  const [justificationFile, setJustificationFile] = useState(null);
   const [absNotification, setAbsNotification] = useState('');
 
   // 3. Document Requests State
@@ -110,26 +111,31 @@ export default function StudentDashboard() {
 
   const handleJustificationSubmit = async (e) => {
     e.preventDefault();
-    if (!justificationForm.date || !justificationForm.reason) return;
+    if (!justificationForm.absenceId || !justificationForm.reason) return;
+    const absId = Number(justificationForm.absenceId);
+    
+    const formData = new FormData();
+    formData.append('reason', justificationForm.reason);
+    if (justificationFile) {
+      formData.append('file', justificationFile);
+    }
+
     try {
-      // Trouver l'absence correspondante à justifier
-      const matchingAbs = absences.find(abs => abs.date === justificationForm.date);
-      if (matchingAbs) {
-        await api.post(`/absences/${matchingAbs.id}/justify`, {
-          reason: justificationForm.reason
-        });
-        setAbsences(absences.map(abs => 
-          abs.id === matchingAbs.id ? { ...abs, status: 'En attente' } : abs
-        ));
-      }
+      await api.post(`/absences/${absId}/justify`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setAbsences(absences.map(abs => 
+        abs.id === absId ? { ...abs, status: 'En attente' } : abs
+      ));
       setAbsNotification('Votre demande de justification a été soumise avec succès.');
     } catch (err) {
       setAbsNotification('Justification enregistrée (simulation).');
       setAbsences(absences.map(abs => 
-        abs.date === justificationForm.date ? { ...abs, status: 'En attente' } : abs
+        abs.id === absId ? { ...abs, status: 'En attente' } : abs
       ));
     }
-    setJustificationForm({ date: '', reason: '' });
+    setJustificationForm({ absenceId: '', reason: '' });
+    setJustificationFile(null);
     setTimeout(() => setAbsNotification(''), 4000);
   };
 
@@ -350,30 +356,68 @@ export default function StudentDashboard() {
               <form onSubmit={handleJustificationSubmit} className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl space-y-4">
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Justifier une absence</h3>
                 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Date de l'absence</label>
-                  <input 
-                    type="date"
-                    value={justificationForm.date}
-                    onChange={e => setJustificationForm({ ...justificationForm, date: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500"
-                  />
-                </div>
+                {(() => {
+                  const unjustifiedAbsences = absences.filter(abs => abs.status === 'Non justifiée');
+                  return (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Date de l'absence</label>
+                        {unjustifiedAbsences.length === 0 ? (
+                          <select
+                            disabled
+                            className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-400 outline-none cursor-not-allowed"
+                          >
+                            <option>Aucune absence à justifier</option>
+                          </select>
+                        ) : (
+                          <select
+                            value={justificationForm.absenceId}
+                            onChange={e => setJustificationForm({ ...justificationForm, absenceId: e.target.value })}
+                            className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500"
+                          >
+                            <option value="">-- Sélectionnez une absence --</option>
+                            {unjustifiedAbsences.map(abs => (
+                              <option key={abs.id} value={abs.id}>
+                                {abs.date} - {abs.module}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Raison / Commentaire</label>
-                  <textarea 
-                    rows="4"
-                    value={justificationForm.reason}
-                    onChange={e => setJustificationForm({ ...justificationForm, reason: e.target.value })}
-                    placeholder="Indiquez le motif et joignez un justificatif à l'administration par email."
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 resize-none leading-relaxed"
-                  />
-                </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Raison / Commentaire</label>
+                        <textarea 
+                          rows="4"
+                          value={justificationForm.reason}
+                          disabled={unjustifiedAbsences.length === 0}
+                          onChange={e => setJustificationForm({ ...justificationForm, reason: e.target.value })}
+                          placeholder={unjustifiedAbsences.length === 0 ? "Aucune absence à justifier." : "Indiquez le motif et joignez un justificatif à l'administration par email."}
+                          className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 resize-none leading-relaxed disabled:opacity-50"
+                        />
+                      </div>
 
-                <button type="submit" className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm">
-                  <Send className="h-3.5 w-3.5" /> Soumettre la pièce
-                </button>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Document justificatif (PDF ou Image)</label>
+                        <input
+                          type="file"
+                          accept=".pdf, .jpg, .jpeg, .png"
+                          disabled={unjustifiedAbsences.length === 0}
+                          onChange={e => setJustificationFile(e.target.files[0] || null)}
+                          className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500 file:mr-4 file:py-1 file:px-3 file:rounded-xl file:border-0 file:text-[10px] file:font-extrabold file:uppercase file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+
+                      <button 
+                        type="submit" 
+                        disabled={unjustifiedAbsences.length === 0 || !justificationForm.absenceId}
+                        className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <Send className="h-3.5 w-3.5" /> Soumettre la pièce
+                      </button>
+                    </>
+                  );
+                })()}
               </form>
             </div>
           </div>
