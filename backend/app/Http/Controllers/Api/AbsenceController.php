@@ -58,13 +58,15 @@ class AbsenceController extends Controller
         $request->validate([
             'timetable_id' => 'required|exists:timetables,id',
             'date' => 'required|date',
+            'session_part' => 'nullable|integer|in:1,2',
             'sheet' => 'required|array', // student_id => true (absent) / false (present)
         ]);
 
         $this->absenceService->saveAttendanceSheet(
             $request->timetable_id,
             $request->date,
-            $request->sheet
+            $request->sheet,
+            $request->input('session_part', 1)
         );
 
         return response()->json(['message' => 'Feuille d\'appel enregistrée avec succès.']);
@@ -122,5 +124,39 @@ class AbsenceController extends Controller
             'message' => 'Le statut de la justification a été mis à jour avec succès.',
             'absence' => $absence->load(['student', 'timetable.module', 'timetable.group'])
         ]);
+    }
+
+    /**
+     * Récupérer les identifiants des étudiants marqués absents pour une séance et une date spécifiques.
+     */
+    public function getProfessorAbsences(Request $request)
+    {
+        if ($request->user()->role !== 'professor') {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $request->validate([
+            'timetable_id' => 'required|exists:timetables,id',
+            'date' => 'required|date',
+            'session_part' => 'nullable|integer|in:1,2',
+        ]);
+
+        $timetableId = $request->timetable_id;
+        $date = $request->date;
+        $sessionPart = $request->input('session_part', 1);
+
+        // Vérification de sécurité : le créneau doit appartenir à ce professeur
+        $timetable = \App\Models\Timetable::with('module')->findOrFail($timetableId);
+        if (!$timetable->module || $timetable->module->professor_id !== $request->user()->id) {
+            return response()->json(['message' => 'Accès interdit. Ce créneau ne vous appartient pas.'], 403);
+        }
+
+        $absences = \App\Models\Absence::where('timetable_id', $timetableId)
+            ->where('date', $date)
+            ->where('session_part', $sessionPart)
+            ->pluck('student_id')
+            ->toArray();
+
+        return response()->json($absences);
     }
 }

@@ -313,6 +313,7 @@ class DatabaseSeeder extends Seeder
             'day' => 'Lundi',
             'start_time' => '09:00:00',
             'end_time' => '11:00:00',
+            'is_published' => true,
         ]);
 
         $t2 = Timetable::create([
@@ -322,6 +323,7 @@ class DatabaseSeeder extends Seeder
             'day' => 'Lundi',
             'start_time' => '14:00:00',
             'end_time' => '16:00:00',
+            'is_published' => true,
         ]);
 
         $t3 = Timetable::create([
@@ -331,6 +333,7 @@ class DatabaseSeeder extends Seeder
             'day' => 'Mardi',
             'start_time' => '11:00:00',
             'end_time' => '13:00:00',
+            'is_published' => true,
         ]);
 
         $t4 = Timetable::create([
@@ -338,8 +341,9 @@ class DatabaseSeeder extends Seeder
             'group_id' => $group3A->id,
             'room_id' => $roomLab->id,
             'day' => 'Mercredi',
-            'start_time' => '09:00:00',
-            'end_time' => '11:00:00',
+            'start_time' => '08:30:00',
+            'end_time' => '11:30:00',
+            'is_published' => true,
         ]);
 
         // 7. Grades

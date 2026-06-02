@@ -53,6 +53,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Emploi du temps (Timetable)
     Route::get('/timetables', [TimetableController::class, 'index']);
 
+    // Accès aux groupes et étudiants pour les enseignants
+    Route::get('/professor/groups/{id}/students', [GroupController::class, 'getStudents']);
+    Route::get('/professor/groups', [GroupController::class, 'index']);
+    Route::get('/professor/absences', [AbsenceController::class, 'getProfessorAbsences']);
+
     // Secured Administration API Routes
     Route::middleware('role:admin')->group(function () {
         Route::get('/admin/timetables', [TimetableController::class, 'adminIndex']);

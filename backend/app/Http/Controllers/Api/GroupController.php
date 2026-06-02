@@ -15,7 +15,7 @@ class GroupController extends Controller
      */
     public function index(Request $request)
     {
-        if ($request->user()->role !== 'admin') {
+        if ($request->user()->role !== 'admin' && $request->user()->role !== 'professor') {
             return response()->json(['message' => 'Accès interdit.'], 403);
         }
 
@@ -128,7 +128,7 @@ class GroupController extends Controller
      */
     public function getStudents(Request $request, $id)
     {
-        if ($request->user()->role !== 'admin') {
+        if ($request->user()->role !== 'admin' && $request->user()->role !== 'professor') {
             return response()->json(['message' => 'Accès interdit.'], 403);
         }
 

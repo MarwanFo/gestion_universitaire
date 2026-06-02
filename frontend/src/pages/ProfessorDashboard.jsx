@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -15,39 +16,81 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+// Helper to split 3-hour slots into two 1h30 sessions
+const getDisplaySlots = (slots) => {
+  const list = [];
+  slots.forEach(slot => {
+    if (!slot.start_time || !slot.end_time) {
+      list.push({
+        ...slot,
+        displayId: `${slot.id}-1`,
+        sessionPart: 1,
+        displayTime: slot.time || 'Séance'
+      });
+      return;
+    }
+
+    const [sh, sm] = slot.start_time.split(':').map(Number);
+    const [eh, em] = slot.end_time.split(':').map(Number);
+    
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    const durationMin = endMin - startMin;
+
+    if (durationMin === 180) { // exactly 3 hours (180 minutes)
+      // First session: start to start + 90 mins (1h30)
+      const s1_start = slot.start_time.substring(0, 5);
+      const s1_end_h = Math.floor((startMin + 90) / 60);
+      const s1_end_m = (startMin + 90) % 60;
+      const s1_end = `${s1_end_h.toString().padStart(2, '0')}:${s1_end_m.toString().padStart(2, '0')}`;
+      
+      // Second session: start + 90 mins to end
+      const s2_start = s1_end;
+      const s2_end = slot.end_time.substring(0, 5);
+
+      list.push({
+        ...slot,
+        displayId: `${slot.id}-1`,
+        sessionPart: 1,
+        displayTime: `${slot.day} (${s1_start} - ${s1_end}) - Séance 1 (1h30)`
+      });
+      list.push({
+        ...slot,
+        displayId: `${slot.id}-2`,
+        sessionPart: 2,
+        displayTime: `${slot.day} (${s2_start} - ${s2_end}) - Séance 2 (1h30)`
+      });
+    } else {
+      // Fallback for non-3h slots
+      list.push({
+        ...slot,
+        displayId: `${slot.id}-1`,
+        sessionPart: 1,
+        displayTime: `${slot.day} (${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)})`
+      });
+    }
+  });
+  return list;
+};
+
 export default function ProfessorDashboard() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('grades');
 
-  // Groups and Modules taught by this professor
-  const groups = ['GINFO-3A', 'GINFO-2A'];
-  const modules = ['Technologie Web 2 (React & Laravel)', 'Architecture des Systèmes'];
+  // Groups and Modules taught by this professor (fetched dynamically)
+  const [groups, setGroups] = useState([]);
+  const [modules, setModules] = useState([]);
   
-  const [selectedGroup, setSelectedGroup] = useState('GINFO-3A');
-  const [selectedModule, setSelectedModule] = useState('Technologie Web 2 (React & Laravel)');
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [selectedModule, setSelectedModule] = useState('');
 
-  // 1. Grade Input State
-  const [studentsGrades, setStudentsGrades] = useState({
-    'GINFO-3A': [
-      { id: 1, name: 'Marwan Alami', cc1: 15, cc2: 16, exam: 14, average: 14.6 },
-      { id: 4, name: 'Sara Kamali', cc1: 17, cc2: 18, exam: 16, average: 16.6 },
-      { id: 5, name: 'Youssef Bennani', cc1: 12, cc2: 13, exam: 11, average: 11.6 },
-    ],
-    'GINFO-2A': [
-      { id: 10, name: 'Anas Tazi', cc1: 14, cc2: 12, exam: 13, average: 13.0 },
-      { id: 11, name: 'Lina Filali', cc1: 10, cc2: 11, exam: 12, average: 11.4 },
-    ]
-  });
-
+  // 1. Grade Input State (flat array for selected group/module)
+  const [studentsGrades, setStudentsGrades] = useState([]);
   const [notification, setNotification] = useState('');
 
   // 2. Attendance State
-  const [attendanceDate, setAttendanceDate] = useState('2026-05-28');
-  const [attendanceSheet, setAttendanceSheet] = useState([
-    { id: 1, name: 'Marwan Alami', absent: false },
-    { id: 4, name: 'Sara Kamali', absent: false },
-    { id: 5, name: 'Youssef Bennani', absent: true },
-  ]);
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().substring(0, 10));
+  const [attendanceSheet, setAttendanceSheet] = useState([]);
 
   // 3. Room Reservation State
   const [rooms, setRooms] = useState([
@@ -57,7 +100,7 @@ export default function ProfessorDashboard() {
     { id: 4, name: 'Labo Info 1', type: 'TP', capacity: 25, reservedSlots: [] },
   ]);
 
-  const [reserveForm, setReserveForm] = useState({ date: '2026-05-28', slot: '09:00-11:00', roomId: 1 });
+  const [reserveForm, setReserveForm] = useState({ date: '2026-05-28', slot: '09:00-11:05', roomId: 1 });
   const [reservationMessage, setReservationMessage] = useState(null);
 
   // 4. Logbook (Cahier de Textes) State
@@ -67,8 +110,161 @@ export default function ProfessorDashboard() {
   ]);
   const [newLogbook, setNewLogbook] = useState({ date: '2026-05-28', duration: '2h', topic: '', summary: '' });
 
-  // Fetch rooms list and initial group grades on load/change
+  // Emplois du temps stockés pour retrouver le timetable_id lié à l'appel
+  const [dbTimetables, setDbTimetables] = useState([]);
+  const [selectedTimetableKey, setSelectedTimetableKey] = useState('');
+
+  // Nouveaux états de filtrage progressif pour l'Appel (Absences)
+  const [filieres, setFilieres] = useState([]);
+  const [selectedFiliereId, setSelectedFiliereId] = useState('');
+  const [filteredGroups, setFilteredGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [filteredAttendanceModules, setFilteredAttendanceModules] = useState([]);
+  const [selectedAttendanceModuleId, setSelectedAttendanceModuleId] = useState('');
+  const [filteredTimetableSlots, setFilteredTimetableSlots] = useState([]);
+
+  // Fetch groups and modules taught by the professor on mount
   useEffect(() => {
+    const initProfessorContext = async () => {
+      try {
+        const [modulesRes, groupsRes, timetablesRes] = await Promise.all([
+          api.get('/classroom/modules'),
+          api.get('/professor/groups'),
+          api.get('/timetables')
+        ]);
+        
+        setModules(modulesRes.data);
+        setGroups(groupsRes.data);
+
+        // Aplatir les séances d'emploi du temps
+        const flatSlots = [];
+        timetablesRes.data.forEach(d => {
+          if (d.slots) {
+            d.slots.forEach(slot => {
+              flatSlots.push({ ...slot, day: d.day });
+            });
+          }
+        });
+        setDbTimetables(flatSlots);
+        
+        if (modulesRes.data.length > 0) {
+          setSelectedModule(modulesRes.data[0].id.toString());
+        }
+        if (groupsRes.data.length > 0) {
+          setSelectedGroup(groupsRes.data[0].id.toString());
+        }
+      } catch (err) {
+        console.warn("Could not load professor contextual groups/modules:", err);
+      }
+    };
+    initProfessorContext();
+  }, []);
+
+  // Effet 1 : Extraire les filières uniques enseignées par le professeur
+  useEffect(() => {
+    if (dbTimetables.length === 0) return;
+
+    const fMap = {};
+    dbTimetables.forEach(slot => {
+      if (slot.group_details && slot.group_details.field) {
+        fMap[slot.group_details.field.id] = slot.group_details.field.name;
+      }
+    });
+
+    const fList = Object.keys(fMap).map(id => ({
+      id: Number(id),
+      name: fMap[id]
+    }));
+    setFilieres(fList);
+
+    if (fList.length > 0) {
+      setSelectedFiliereId(fList[0].id.toString());
+    }
+  }, [dbTimetables]);
+
+  // Effet 2 : Mettre à jour les groupes correspondants à la filière sélectionnée
+  useEffect(() => {
+    if (!selectedFiliereId) {
+      setFilteredGroups([]);
+      setSelectedGroupId('');
+      return;
+    }
+
+    const gMap = {};
+    dbTimetables.forEach(slot => {
+      if (slot.group_details && slot.group_details.field && slot.group_details.field.id.toString() === selectedFiliereId.toString()) {
+        gMap[slot.group_details.id] = slot.group_details.name;
+      }
+    });
+
+    const gList = Object.keys(gMap).map(id => ({
+      id: Number(id),
+      name: gMap[id]
+    }));
+    setFilteredGroups(gList);
+
+    if (gList.length > 0) {
+      setSelectedGroupId(gList[0].id.toString());
+    } else {
+      setSelectedGroupId('');
+    }
+  }, [selectedFiliereId, dbTimetables]);
+
+  // Effet 2.5 : Mettre à jour les matières (modules) enseignées par le professeur pour le groupe sélectionné
+  useEffect(() => {
+    if (!selectedGroupId) {
+      setFilteredAttendanceModules([]);
+      setSelectedAttendanceModuleId('');
+      return;
+    }
+
+    const mMap = {};
+    dbTimetables.forEach(slot => {
+      if (slot.group_id && slot.group_id.toString() === selectedGroupId.toString()) {
+        mMap[slot.module_id] = slot.module;
+      }
+    });
+
+    const mList = Object.keys(mMap).map(id => ({
+      id: Number(id),
+      name: mMap[id]
+    }));
+    setFilteredAttendanceModules(mList);
+
+    if (mList.length > 0) {
+      setSelectedAttendanceModuleId(mList[0].id.toString());
+    } else {
+      setSelectedAttendanceModuleId('');
+    }
+  }, [selectedGroupId, dbTimetables]);
+
+  // Effet 3 : Mettre à jour les créneaux horaires correspondants au groupe et à la matière sélectionnés
+  useEffect(() => {
+    if (!selectedGroupId || !selectedAttendanceModuleId) {
+      setFilteredTimetableSlots([]);
+      setSelectedTimetableKey('');
+      return;
+    }
+
+    const slots = dbTimetables.filter(slot =>
+      slot.group_id && slot.group_id.toString() === selectedGroupId.toString() &&
+      slot.module_id && slot.module_id.toString() === selectedAttendanceModuleId.toString()
+    );
+    // Split 3-hour slots into two 1h30 sessions
+    const displaySlots = getDisplaySlots(slots);
+    setFilteredTimetableSlots(displaySlots);
+
+    if (displaySlots.length > 0) {
+      setSelectedTimetableKey(displaySlots[0].displayId);
+    } else {
+      setSelectedTimetableKey('');
+    }
+  }, [selectedGroupId, selectedAttendanceModuleId, dbTimetables]);
+
+  // Fetch rooms list when reservations tab is active
+  useEffect(() => {
+    if (activeTab !== 'reservations') return;
+
     const fetchRooms = async () => {
       try {
         const res = await api.get('/reservations/rooms');
@@ -84,41 +280,106 @@ export default function ProfessorDashboard() {
       }
     };
     fetchRooms();
-  }, []);
+  }, [activeTab]);
 
+  // Fetch student grades for the selected group & module
   useEffect(() => {
+    if (!selectedGroup || !selectedModule) return;
+    
     const fetchGrades = async () => {
       try {
         const res = await api.post('/grades/group', {
-          group_id: selectedGroup === 'GINFO-3A' ? 1 : 2,
-          module_id: selectedModule.includes('Web') ? 1 : 2
+          group_id: Number(selectedGroup),
+          module_id: Number(selectedModule)
         });
         
-        if (res.data.length > 0) {
-          setStudentsGrades(prev => ({
-            ...prev,
-            [selectedGroup]: res.data.map(student => ({
-              id: student.student_id,
-              name: student.student_name,
-              cc1: student.cc1 !== null ? student.cc1 : 12,
-              cc2: student.cc2 !== null ? student.cc2 : 12,
-              exam: student.exam !== null ? student.exam : 12,
-              average: student.final_grade !== null ? student.final_grade : 12.0
-            }))
-          }));
+        if (res.data && res.data.length > 0) {
+          setStudentsGrades(res.data.map(student => ({
+            id: student.student_id,
+            name: student.student_name,
+            cc1: student.cc1 !== null ? parseFloat(student.cc1) : 12,
+            cc2: student.cc2 !== null ? parseFloat(student.cc2) : 12,
+            exam: student.exam !== null ? parseFloat(student.exam) : 12,
+            average: student.final_grade !== null ? parseFloat(student.final_grade) : 12.0
+          })));
+        } else {
+          // Aucun enregistrement existant, charger les étudiants de ce groupe
+          const studentsRes = await api.get(`/professor/groups/${selectedGroup}/students`);
+          setStudentsGrades(studentsRes.data.map(student => ({
+            id: student.id,
+            name: student.name,
+            cc1: 12,
+            cc2: 12,
+            exam: 12,
+            average: 12.0
+          })));
         }
       } catch (e) {
         console.warn("Could not fetch group grades from API", e);
+        // Fallback : charger les étudiants
+        try {
+          const studentsRes = await api.get(`/professor/groups/${selectedGroup}/students`);
+          setStudentsGrades(studentsRes.data.map(student => ({
+            id: student.id,
+            name: student.name,
+            cc1: 12,
+            cc2: 12,
+            exam: 12,
+            average: 12.0
+          })));
+        } catch (err) {
+          console.warn("Could not fetch students as grade fallback", err);
+        }
       }
     };
     fetchGrades();
   }, [selectedGroup, selectedModule]);
 
+  // Fetch students & absences for attendance tab based on selectedTimetableKey and attendanceDate
+  useEffect(() => {
+    const timetableId = selectedTimetableKey.split('-')[0] || '';
+    const sessionPart = Number(selectedTimetableKey.split('-')[1]) || 1;
+
+    if (!timetableId || activeTab !== 'attendance') return;
+
+    const activeSlot = dbTimetables.find(t => t.id.toString() === timetableId.toString());
+    if (!activeSlot) return;
+
+    const fetchAttendanceSheetData = async () => {
+      try {
+        // 1. Récupérer les étudiants de la classe liée à ce créneau
+        const studentsRes = await api.get(`/professor/groups/${activeSlot.group_id}/students`);
+        
+        // 2. Récupérer les absences déjà saisies pour ce créneau, cette date et cette session
+        const absencesRes = await api.get(`/professor/absences`, {
+          params: {
+            timetable_id: activeSlot.id,
+            date: attendanceDate,
+            session_part: sessionPart
+          }
+        });
+
+        const absentIds = absencesRes.data || [];
+
+        // 3. Initialiser la feuille d'appel avec les absences pré-cochées
+        setAttendanceSheet(studentsRes.data.map(student => ({
+          id: student.id,
+          name: student.name,
+          absent: absentIds.includes(student.id)
+        })));
+      } catch (err) {
+        console.warn("Could not load attendance sheet data:", err);
+      }
+    };
+
+    fetchAttendanceSheetData();
+  }, [selectedTimetableKey, attendanceDate, activeTab, dbTimetables]);
+
   const handleGradeChange = (studentId, field, value) => {
     const numValue = Math.min(20, Math.max(0, parseFloat(value) || 0));
     
-    setStudentsGrades(prev => {
-      const updatedGroupStudents = prev[selectedGroup].map(student => {
+    setStudentsGrades(prev => 
+      prev.map(student => {
         if (student.id === studentId) {
           const updatedStudent = { ...student, [field]: numValue };
           const avg = (updatedStudent.cc1 * 0.2) + (updatedStudent.cc2 * 0.2) + (updatedStudent.exam * 0.6);
@@ -126,16 +387,15 @@ export default function ProfessorDashboard() {
           return updatedStudent;
         }
         return student;
-      });
-      return { ...prev, [selectedGroup]: updatedGroupStudents };
-    });
+      })
+    );
   };
 
   const handleSaveGrades = async () => {
     try {
       await api.post('/grades', {
-        module_id: selectedModule.includes('Web') ? 1 : 2,
-        grades: studentsGrades[selectedGroup].map(s => ({
+        module_id: Number(selectedModule),
+        grades: studentsGrades.map(s => ({
           student_id: s.id,
           cc1: s.cc1,
           cc2: s.cc2,
@@ -144,19 +404,47 @@ export default function ProfessorDashboard() {
       });
       setNotification('Notes enregistrées avec succès dans la base PostgreSQL !');
     } catch (err) {
-      setNotification('Notes enregistrées avec succès (simulation).');
+      console.error(err);
+      setNotification('Erreur lors de la sauvegarde des notes.');
     }
     setTimeout(() => setNotification(''), 4000);
   };
 
   const toggleAttendance = (id) => {
-    setAttendanceSheet(attendanceSheet.map(student => 
-      student.id === id ? { ...student, absent: !student.absent } : student
-    ));
+    setAttendanceSheet(prev =>
+      prev.map(student => 
+        student.id === id ? { ...student, absent: !student.absent } : student
+      )
+    );
   };
 
-  const handleSaveAttendance = () => {
-    setNotification('Feuille d\'appel sauvegardée avec succès !');
+  const handleSaveAttendance = async () => {
+    const timetableId = selectedTimetableKey.split('-')[0] || '';
+    const sessionPart = Number(selectedTimetableKey.split('-')[1]) || 1;
+
+    if (!timetableId) {
+      setNotification("Erreur : Veuillez sélectionner un créneau d'emploi du temps.");
+      setTimeout(() => setNotification(''), 4000);
+      return;
+    }
+
+    const sheetObj = {};
+    attendanceSheet.forEach(s => {
+      sheetObj[s.id] = s.absent;
+    });
+
+    try {
+      await api.post('/absences', {
+        timetable_id: Number(timetableId),
+        date: attendanceDate,
+        session_part: sessionPart,
+        sheet: sheetObj
+      });
+      setNotification("Feuille d'appel validée et enregistrée en base de données !");
+    } catch (err) {
+      console.error(err);
+      setNotification("Erreur lors de la sauvegarde de la feuille d'appel.");
+    }
     setTimeout(() => setNotification(''), 4000);
   };
 
@@ -308,7 +596,7 @@ export default function ProfessorDashboard() {
                 onChange={e => setSelectedGroup(e.target.value)}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
               >
-                {groups.map(g => <option key={g} value={g}>{g}</option>)}
+                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">
@@ -318,7 +606,7 @@ export default function ProfessorDashboard() {
                 onChange={e => setSelectedModule(e.target.value)}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
               >
-                {modules.map(m => <option key={m} value={m}>{m}</option>)}
+                {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
             </div>
           </div>
@@ -339,7 +627,7 @@ export default function ProfessorDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                  {studentsGrades[selectedGroup]?.map(student => (
+                  {studentsGrades.map(student => (
                     <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 font-bold text-slate-900">{student.name}</td>
                       <td className="p-4 text-center">
@@ -377,11 +665,11 @@ export default function ProfessorDashboard() {
                       </td>
                       <td className="p-4 text-center font-bold">
                         <span className={`inline-block px-2.5 py-1 rounded border text-xs ${
-                          student.average >= 12 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                          student.average >= 10 ? 'bg-indigo-50 border-indigo-100 text-indigo-600' :
+                          (Number(student.average) || 0) >= 12 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                          (Number(student.average) || 0) >= 10 ? 'bg-indigo-50 border-indigo-100 text-indigo-600' :
                           'bg-rose-50 border-rose-105 text-rose-600'
                         }`}>
-                          {student.average.toFixed(2)} / 20
+                          {(Number(student.average) || 0).toFixed(2)} / 20
                         </span>
                       </td>
                     </tr>
@@ -404,7 +692,68 @@ export default function ProfessorDashboard() {
         {/* Tab 2: Attendance / Absences */}
         {activeTab === 'attendance' && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center">
+            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-6 items-center">
+              {/* 1. Sélectionneur de Filière */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Filière :</span>
+                <select 
+                  value={selectedFiliereId}
+                  onChange={e => setSelectedFiliereId(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
+                >
+                  {filieres.length === 0 ? (
+                    <option value="">Aucune filière</option>
+                  ) : (
+                    filieres.map(f => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* 2. Sélectionneur de Groupe */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Groupe :</span>
+                <select 
+                  value={selectedGroupId}
+                  onChange={e => setSelectedGroupId(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
+                >
+                  {filteredGroups.length === 0 ? (
+                    <option value="">Aucun groupe</option>
+                  ) : (
+                    filteredGroups.map(g => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* 2.5. Sélectionneur de Matière (Module) */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Matière :</span>
+                <select 
+                  value={selectedAttendanceModuleId}
+                  onChange={e => setSelectedAttendanceModuleId(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none min-w-[150px]"
+                >
+                  {filteredAttendanceModules.length === 0 ? (
+                    <option value="">Aucune matière</option>
+                  ) : (
+                    filteredAttendanceModules.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* 3. Sélectionneur de Date */}
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date de l'appel :</span>
                 <input 
@@ -413,6 +762,26 @@ export default function ProfessorDashboard() {
                   onChange={e => setAttendanceDate(e.target.value)}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
                 />
+              </div>
+
+              {/* 4. Sélectionneur de Séance */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Séance :</span>
+                <select 
+                  value={selectedTimetableKey}
+                  onChange={e => setSelectedTimetableKey(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none min-w-[260px]"
+                >
+                  {filteredTimetableSlots.length === 0 ? (
+                    <option value="">Aucune séance</option>
+                  ) : (
+                    filteredTimetableSlots.map(slot => (
+                      <option key={slot.displayId} value={slot.displayId}>
+                        {slot.displayTime}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
             </div>
 

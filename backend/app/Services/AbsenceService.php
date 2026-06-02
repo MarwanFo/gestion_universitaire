@@ -43,7 +43,7 @@ class AbsenceService
     /**
      * Enregistre la feuille d'appel pour une séance d'un groupe à une date donnée.
      */
-    public function saveAttendanceSheet(int $timetableId, string $date, array $sheet): void
+    public function saveAttendanceSheet(int $timetableId, string $date, array $sheet, int $sessionPart = 1): void
     {
         foreach ($sheet as $studentId => $isAbsent) {
             if ($isAbsent) {
@@ -52,6 +52,7 @@ class AbsenceService
                         'student_id' => $studentId,
                         'timetable_id' => $timetableId,
                         'date' => $date,
+                        'session_part' => $sessionPart,
                     ],
                     [
                         'status' => 'absent',
@@ -63,6 +64,7 @@ class AbsenceService
                     'student_id' => $studentId,
                     'timetable_id' => $timetableId,
                     'date' => $date,
+                    'session_part' => $sessionPart,
                 ])->delete();
             }
         }

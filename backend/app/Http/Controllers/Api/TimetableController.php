@@ -21,7 +21,7 @@ class TimetableController extends Controller
     {
         $user = $request->user();
         
-        $query = Timetable::with(['module', 'room', 'group']);
+        $query = Timetable::with(['module', 'room', 'group.field']);
         
         if ($user->role === 'student') {
             if ($user->group_id) {
@@ -66,6 +66,14 @@ class TimetableController extends Controller
                         'room' => $t->room ? $t->room->name : 'N/A',
                         'group_id' => $t->group_id,
                         'group' => $t->group ? $t->group->name : 'N/A',
+                        'group_details' => $t->group ? [
+                            'id' => $t->group->id,
+                            'name' => $t->group->name,
+                            'field' => $t->group->field ? [
+                                'id' => $t->group->field->id,
+                                'name' => $t->group->field->name,
+                            ] : null
+                        ] : null,
                     ];
                 })->values()->toArray()
             ];

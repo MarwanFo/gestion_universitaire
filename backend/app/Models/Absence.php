@@ -14,6 +14,7 @@ class Absence extends Model
         'student_id',
         'timetable_id',
         'date',
+        'session_part',
         'status',
         'justification_path',
         'justification_status',
