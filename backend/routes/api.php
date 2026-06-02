@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\FieldController;
 use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\RoomController;
+use App\Http\Controllers\Api\LogbookController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -106,5 +107,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // Absence Management for Admin
         Route::get('/admin/absences', [AbsenceController::class, 'getAdminAbsences']);
         Route::post('/admin/absences/{absence}/justify', [AbsenceController::class, 'justifyAbsence']);
+
+        // Logbooks Consultation for Admin
+        Route::get('/admin/logbooks', [LogbookController::class, 'index']);
     });
 });

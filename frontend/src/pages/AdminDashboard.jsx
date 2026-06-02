@@ -205,6 +205,32 @@ export default function AdminDashboard() {
   const [isRejectAbsenceModalOpen, setIsRejectAbsenceModalOpen] = useState(false);
   const [selectedAbsenceForRejection, setSelectedAbsenceForRejection] = useState(null);
 
+  // Logbooks states
+  const [dbLogbooks, setDbLogbooks] = useState([]);
+  const [loadingLogbooks, setLoadingLogbooks] = useState(false);
+  const [logbookProfessorFilter, setLogbookProfessorFilter] = useState('');
+  const [logbookGroupFilter, setLogbookGroupFilter] = useState('');
+  const [logbookModuleFilter, setLogbookModuleFilter] = useState('');
+  const [selectedLogbookForModal, setSelectedLogbookForModal] = useState(null);
+  const [isLogbookModalOpen, setIsLogbookModalOpen] = useState(false);
+
+  const fetchLogbooks = async () => {
+    setLoadingLogbooks(true);
+    try {
+      const params = {};
+      if (logbookProfessorFilter) params.professor_id = logbookProfessorFilter;
+      if (logbookGroupFilter) params.group_id = logbookGroupFilter;
+      if (logbookModuleFilter) params.module_id = logbookModuleFilter;
+      
+      const res = await api.get('/admin/logbooks', { params });
+      setDbLogbooks(res.data || []);
+    } catch (e) {
+      console.warn("Failed to fetch logbooks", e);
+    } finally {
+      setLoadingLogbooks(false);
+    }
+  };
+
   const fetchAbsences = async () => {
     setLoadingAbsences(true);
     try {
@@ -1023,6 +1049,12 @@ export default function AdminDashboard() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'logbooks') {
+      fetchLogbooks();
+    }
+  }, [activeTab, logbookProfessorFilter, logbookGroupFilter, logbookModuleFilter]);
+
   const fetchTimetableSlots = async (gId) => {
     try {
       const res = await api.get(`/admin/timetables?group_id=${gId}`);
@@ -1435,6 +1467,18 @@ export default function AdminDashboard() {
             >
               <UserCheck className="h-4 w-4" />
               Suivi des Absences
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('logbooks'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'logbooks' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <BookOpen className="h-4 w-4" />
+              Cahiers de Textes
             </button>
           </nav>
         </div>
@@ -3254,6 +3298,156 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Tab: Consultation des Cahiers de Textes */}
+        {activeTab === 'logbooks' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Header */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <h2 className="text-base font-bold text-slate-900">Suivi Pédagogique & Cahiers de Textes</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Auditez en temps réel le contenu des séances déclarées par les enseignants.</p>
+              </div>
+              <button
+                onClick={fetchLogbooks}
+                disabled={loadingLogbooks}
+                className="py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all flex items-center gap-2"
+              >
+                🔄 Actualiser
+              </button>
+            </div>
+
+            {/* Audit Filters Panel */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Filter Teacher */}
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Filtrer par Enseignant</label>
+                <select
+                  value={logbookProfessorFilter}
+                  onChange={e => setLogbookProfessorFilter(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold transition-all"
+                >
+                  <option value="">Tous les Enseignants</option>
+                  {users.filter(u => u.role === 'professor').map(prof => (
+                    <option key={prof.id} value={prof.id}>{prof.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter Group */}
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Filtrer par Classe</label>
+                <select
+                  value={logbookGroupFilter}
+                  onChange={e => setLogbookGroupFilter(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold transition-all"
+                >
+                  <option value="">Toutes les Classes</option>
+                  {dbGroups.map(group => (
+                    <option key={group.id} value={group.id}>{group.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter Module */}
+              <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Filtrer par Matière</label>
+                <select
+                  value={logbookModuleFilter}
+                  onChange={e => setLogbookModuleFilter(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-500 outline-none text-xs text-slate-700 font-bold transition-all"
+                >
+                  <option value="">Toutes les Matières</option>
+                  {modules.map(mod => (
+                    <option key={mod.id} value={mod.id}>[{mod.code}] {mod.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Logbook Session List */}
+            <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
+              {loadingLogbooks ? (
+                <div className="p-16 text-center text-xs text-slate-400">
+                  Chargement des séances en cours...
+                </div>
+              ) : dbLogbooks.length === 0 ? (
+                <div className="p-16 text-center text-xs text-slate-400 italic">
+                  Aucune séance déclarée ne correspond à ces critères.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[900px] border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="p-4">Date</th>
+                        <th className="p-4">Heures</th>
+                        <th className="p-4">Enseignant</th>
+                        <th className="p-4">Classe</th>
+                        <th className="p-4">Matière</th>
+                        <th className="p-4">Type</th>
+                        <th className="p-4">Contenu / Objectif du Cours</th>
+                        <th className="p-4 text-right">Détails</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                      {dbLogbooks.map(entry => {
+                        const profObj = entry.timetable?.module?.professor;
+                        const groupObj = entry.timetable?.group;
+                        const moduleObj = entry.timetable?.module;
+                        
+                        let natureBadge = 'bg-slate-50 text-slate-600 border-slate-200';
+                        if (entry.nature === 'Cours') {
+                          natureBadge = 'bg-indigo-50 text-indigo-600 border-indigo-100';
+                        } else if (entry.nature === 'TD') {
+                          natureBadge = 'bg-amber-50 text-amber-600 border-amber-100';
+                        } else if (entry.nature === 'TP') {
+                          natureBadge = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                        } else if (entry.nature === 'Examen') {
+                          natureBadge = 'bg-rose-50 text-rose-600 border-rose-100';
+                        }
+
+                        return (
+                          <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-4 font-semibold text-slate-900">{entry.date}</td>
+                            <td className="p-4 text-slate-500 font-medium">
+                              {entry.start_time.substring(0, 5)} - {entry.end_time.substring(0, 5)}
+                            </td>
+                            <td className="p-4 font-bold text-slate-900">{profObj ? profObj.name : 'N/A'}</td>
+                            <td className="p-4 font-semibold text-slate-650">{groupObj ? groupObj.name : 'N/A'}</td>
+                            <td className="p-4">
+                              <div className="font-bold text-slate-800">{moduleObj ? moduleObj.name : 'N/A'}</div>
+                              <div className="text-[10px] text-slate-400">{moduleObj ? moduleObj.code : ''}</div>
+                            </td>
+                            <td className="p-4">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${natureBadge}`}>
+                                {entry.nature || 'Cours'}
+                              </span>
+                            </td>
+                            <td className="p-4 max-w-[280px] truncate" title={entry.objective}>
+                              {entry.objective || 'Aucun objectif défini'}
+                            </td>
+                            <td className="p-4 text-right">
+                              <button
+                                onClick={() => {
+                                  setSelectedLogbookForModal(entry);
+                                  setIsLogbookModalOpen(true);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-indigo-600 font-bold text-[10px] transition-all"
+                              >
+                                👁️ Consulter
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Polymorphic Profile Form Modal */}
@@ -4729,6 +4923,99 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal: Détails de la Séance de Cahier de Textes */}
+      {isLogbookModalOpen && selectedLogbookForModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-scaleUp">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Détails de la Séance</h3>
+                <p className="text-xs text-slate-500 mt-1">Cahier de textes numérisé</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsLogbookModalOpen(false);
+                  setSelectedLogbookForModal(null);
+                }}
+                className="p-1.5 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</div>
+                  <div className="text-xs font-bold text-slate-800 mt-1">{selectedLogbookForModal.date}</div>
+                </div>
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durée</div>
+                  <div className="text-xs font-bold text-slate-800 mt-1">
+                    {selectedLogbookForModal.start_time.substring(0, 5)} - {selectedLogbookForModal.end_time.substring(0, 5)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Enseignant</div>
+                  <div className="text-xs font-bold text-slate-800 mt-1">
+                    {selectedLogbookForModal.timetable?.module?.professor?.name || 'N/A'}
+                  </div>
+                </div>
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Classe / Groupe</div>
+                  <div className="text-xs font-bold text-slate-800 mt-1">
+                    {selectedLogbookForModal.timetable?.group?.name || 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Matière & Code</div>
+                <div className="text-xs font-bold text-slate-800 mt-1">
+                  [{selectedLogbookForModal.timetable?.module?.code}] {selectedLogbookForModal.timetable?.module?.name}
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nature du cours</div>
+                <div className="mt-1.5">
+                  <span className={`px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase border ${
+                    selectedLogbookForModal.nature === 'Cours' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' :
+                    selectedLogbookForModal.nature === 'TD' ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                    selectedLogbookForModal.nature === 'TP' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                    selectedLogbookForModal.nature === 'Examen' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                    'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}>
+                    {selectedLogbookForModal.nature || 'Cours'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Objectif & Contenu du Cours</div>
+                <div className="text-xs text-slate-600 leading-relaxed max-h-[160px] overflow-y-auto pr-1">
+                  {selectedLogbookForModal.objective || 'Aucun objectif spécifié.'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end p-6 border-t border-slate-100 bg-slate-50/20">
+              <button
+                onClick={() => {
+                  setIsLogbookModalOpen(false);
+                  setSelectedLogbookForModal(null);
+                }}
+                className="py-2.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         </div>
       )}
