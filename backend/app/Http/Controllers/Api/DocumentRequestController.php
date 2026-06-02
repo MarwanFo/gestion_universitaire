@@ -94,4 +94,37 @@ class DocumentRequestController extends Controller
             'request' => $docRequest
         ]);
     }
+
+    /**
+     * Télécharger l'attestation officielle en format PDF.
+     */
+    public function downloadPdf(Request $request, $id)
+    {
+        // Authentification manuelle via token en query param si non connecté via session
+        $user = $request->user();
+        if (!$user && $request->filled('token')) {
+            $tokenStr = $request->query('token');
+            $tokenModel = \Laravel\Sanctum\PersonalAccessToken::findToken($tokenStr);
+            if ($tokenModel) {
+                $user = $tokenModel->tokenable;
+            }
+        }
+
+        // On récupère la demande
+        $docRequest = \App\Models\DocumentRequest::with('user')->findOrFail($id);
+
+        // Si le document n'est pas encore approuvé, on restreint l'accès aux admins ou propriétaires
+        if ($docRequest->status !== 'approved') {
+            if (!$user || ($user->role !== 'admin' && $user->id !== $docRequest->user_id)) {
+                return response()->json(['message' => 'Accès interdit. Le document n\'est pas encore approuvé.'], 403);
+            }
+        }
+
+        // Compilation du PDF
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.document', compact('docRequest'));
+        
+        $filename = str_replace(' ', '_', $docRequest->type) . '_' . $docRequest->id . '.pdf';
+        
+        return $pdf->download($filename);
+    }
 }

@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   const [fields, setFields] = useState([]);
   const [modules, setModules] = useState([]);
   const [documentRequests, setDocumentRequests] = useState([]);
+  const [docActiveSubTab, setDocActiveSubTab] = useState('students');
   const [timetable, setTimetable] = useState([
     { day: 'Lundi', slots: [] },
     { day: 'Mardi', slots: [] },
@@ -480,15 +481,30 @@ export default function AdminDashboard() {
         api.get('/admin/users').then(res => setUsers(res.data)).catch(e => console.warn("Failed to fetch admin users", e)),
         api.get('/admin/stats').then(res => setStats(res.data)).catch(e => console.warn("Failed to fetch admin stats", e)),
         api.get('/documents').then(res => {
-          setDocumentRequests(res.data.map(doc => ({
-            id: doc.id,
-            studentName: doc.user ? doc.user.name : 'Inconnu',
-            documentType: doc.type === 'scolarite' ? 'Attestation de scolarité' :
-                         doc.type === 'releve' ? 'Relevé de notes - GINFO 2' : 'Autre Document',
-            date: doc.created_at ? doc.created_at.substring(0, 10) : '2026-05-28',
-            status: doc.status === 'pending' ? 'En attente' :
-                    doc.status === 'approved' ? 'Approuvée' : 'Rejetée'
-          })));
+          setDocumentRequests(res.data.map(doc => {
+            let docTypeDisplay = doc.type;
+            if (doc.type === 'scolarite') docTypeDisplay = 'Attestation de scolarité';
+            else if (doc.type === 'releve') docTypeDisplay = 'Relevé de notes';
+            else if (doc.type === 'travail') docTypeDisplay = 'Attestation de travail';
+            else if (doc.type === 'paie') docTypeDisplay = 'Bulletin de paie';
+            else if (doc.type === 'mission') docTypeDisplay = 'Ordre de mission';
+
+            return {
+              id: doc.id,
+              user: doc.user,
+              userRole: doc.user?.role || 'student',
+              studentName: doc.user ? doc.user.name : 'Inconnu',
+              documentType: docTypeDisplay,
+              date: doc.created_at ? doc.created_at.substring(0, 10) : '2026-05-28',
+              status: doc.status === 'pending' ? 'En attente' :
+                      doc.status === 'approved' ? 'Approuvée' : 'Rejetée',
+              destination: doc.destination,
+              start_date: doc.start_date,
+              end_date: doc.end_date,
+              motif: doc.motif,
+              pdf_path: doc.pdf_path
+            };
+          }));
         }).catch(e => console.warn("Failed to fetch document requests", e)),
         api.get('/timetables').then(res => {
           if (res.data && res.data.length > 0) {
@@ -2693,57 +2709,206 @@ export default function AdminDashboard() {
         {/* Tab 4: Documents Requests validation */}
         {activeTab === 'documents' && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl overflow-x-auto">
-              <table className="w-full min-w-[700px] border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-4">Étudiant</th>
-                    <th className="p-4">Document demandé</th>
-                    <th className="p-4">Date de demande</th>
-                    <th className="p-4">Statut</th>
-                    <th className="p-4 text-right">Décisions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                  {documentRequests.map(doc => (
-                    <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 font-bold text-slate-900">{doc.studentName}</td>
-                      <td className="p-4 text-slate-550">{doc.documentType}</td>
-                      <td className="p-4 text-slate-400">{doc.date}</td>
-                      <td className="p-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
-                          doc.status === 'Approuvée' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                          doc.status === 'Rejetée' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                          'bg-amber-50 border-amber-100 text-amber-600'
-                        }`}>
-                          {doc.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right flex justify-end gap-2">
-                        {doc.status === 'En attente' ? (
-                          <>
-                            <button 
-                              onClick={() => handleApproveDoc(doc.id)}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-colors shadow-sm"
-                            >
-                              <Check className="h-3 w-3" /> Approuver
-                            </button>
-                            <button 
-                              onClick={() => handleRejectDoc(doc.id)}
-                              className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
-                            >
-                              <X className="h-3 w-3" /> Rejeter
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-slate-400 text-[10px] font-bold uppercase italic p-1">Traité</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Sub Tabs Selection Header */}
+            <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex gap-3">
+              <button
+                onClick={() => setDocActiveSubTab('students')}
+                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  docActiveSubTab === 'students'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                    : 'bg-slate-500/5 text-slate-600 hover:bg-slate-100 border border-transparent'
+                }`}
+              >
+                🎓 Requêtes Étudiants
+              </button>
+              <button
+                onClick={() => setDocActiveSubTab('professors')}
+                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  docActiveSubTab === 'professors'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/10'
+                    : 'bg-slate-500/5 text-slate-600 hover:bg-slate-100 border border-transparent'
+                }`}
+              >
+                💼 Requêtes Enseignants
+              </button>
             </div>
+
+            {/* List for Students */}
+            {docActiveSubTab === 'students' && (
+              <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl overflow-x-auto">
+                <table className="w-full min-w-[800px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="p-4">Étudiant</th>
+                      <th className="p-4">Filière / Classe</th>
+                      <th className="p-4">Document demandé</th>
+                      <th className="p-4">Date de demande</th>
+                      <th className="p-4">Statut</th>
+                      <th className="p-4 text-right">Décisions / Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                    {documentRequests.filter(d => d.userRole === 'student').length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-slate-400 italic">
+                          Aucune demande de document soumise par les étudiants.
+                        </td>
+                      </tr>
+                    ) : (
+                      documentRequests.filter(d => d.userRole === 'student').map(doc => {
+                        const studentProfileObj = doc.user?.student_profile;
+                        const classDisplay = studentProfileObj?.group?.name || 'N/A';
+                        const fieldDisplay = studentProfileObj?.field?.name || 'N/A';
+
+                        return (
+                          <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-4 font-bold text-slate-900">{doc.studentName}</td>
+                            <td className="p-4 text-slate-500">
+                              <span className="font-semibold">{classDisplay}</span>
+                              <span className="text-[10px] block text-slate-400">{fieldDisplay}</span>
+                            </td>
+                            <td className="p-4 text-slate-550 font-medium">{doc.documentType}</td>
+                            <td className="p-4 text-slate-450">{doc.date}</td>
+                            <td className="p-4">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                                doc.status === 'Approuvée' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                doc.status === 'Rejetée' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                'bg-amber-50 border-amber-100 text-amber-600'
+                              }`}>
+                                {doc.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right flex justify-end gap-2 items-center">
+                              {doc.status === 'En attente' ? (
+                                <>
+                                  <button 
+                                    onClick={() => handleApproveDoc(doc.id)}
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-colors shadow-sm"
+                                  >
+                                    <Check className="h-3 w-3" /> Approuver
+                                  </button>
+                                  <button 
+                                    onClick={() => handleRejectDoc(doc.id)}
+                                    className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
+                                  >
+                                    <X className="h-3 w-3" /> Rejeter
+                                  </button>
+                                </>
+                              ) : doc.status === 'Approuvée' ? (
+                                <button
+                                  onClick={() => window.open(`${api.defaults.baseURL || 'http://127.0.0.1:8000/api'}/admin/documents/${doc.id}/pdf?token=${localStorage.getItem('token')}`, '_blank')}
+                                  className="px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
+                                >
+                                  📥 Télécharger le PDF
+                                </button>
+                              ) : (
+                                <span className="text-slate-400 text-[10px] font-bold uppercase italic p-1">Refusé</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* List for Teachers */}
+            {docActiveSubTab === 'professors' && (
+              <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl overflow-x-auto">
+                <table className="w-full min-w-[900px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="p-4">Enseignant</th>
+                      <th className="p-4">Département / Spécialité</th>
+                      <th className="p-4">Document demandé</th>
+                      <th className="p-4">Détails Requête</th>
+                      <th className="p-4">Date de demande</th>
+                      <th className="p-4">Statut</th>
+                      <th className="p-4 text-right">Décisions / Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                    {documentRequests.filter(d => d.userRole === 'professor').length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="p-8 text-center text-slate-400 italic">
+                          Aucune demande de document soumise par les enseignants.
+                        </td>
+                      </tr>
+                    ) : (
+                      documentRequests.filter(d => d.userRole === 'professor').map(doc => {
+                        const profProfileObj = doc.user?.professor_profile;
+                        const deptDisplay = profProfileObj?.department || 'Sciences de l\'Ingénieur';
+                        const specDisplay = profProfileObj?.speciality || 'N/A';
+
+                        return (
+                          <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-4 font-bold text-slate-900">{doc.studentName}</td>
+                            <td className="p-4 text-slate-500">
+                              <span className="font-semibold">{deptDisplay}</span>
+                              <span className="text-[10px] block text-slate-400">{specDisplay}</span>
+                            </td>
+                            <td className="p-4 text-slate-550 font-medium">{doc.documentType}</td>
+                            <td className="p-4 text-slate-500 max-w-[250px] truncate">
+                              {doc.destination && (
+                                <span className="block text-[10px]"><strong>📍 Destination:</strong> {doc.destination}</span>
+                              )}
+                              {doc.start_date && doc.end_date && (
+                                <span className="block text-[10px]"><strong>📅 Période:</strong> Du {doc.start_date} au {doc.end_date}</span>
+                              )}
+                              {doc.motif && (
+                                <span className="block text-[10px]"><strong>💬 Motif:</strong> {doc.motif}</span>
+                              )}
+                              {!doc.destination && !doc.start_date && !doc.motif && (
+                                <span className="text-slate-400 italic text-[10px]">Aucun détail supplémentaire</span>
+                              )}
+                            </td>
+                            <td className="p-4 text-slate-450">{doc.date}</td>
+                            <td className="p-4">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                                doc.status === 'Approuvée' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                doc.status === 'Rejetée' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                'bg-amber-50 border-amber-100 text-amber-600'
+                              }`}>
+                                {doc.status}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right flex justify-end gap-2 items-center">
+                              {doc.status === 'En attente' ? (
+                                <>
+                                  <button 
+                                    onClick={() => handleApproveDoc(doc.id)}
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-colors shadow-sm"
+                                  >
+                                    <Check className="h-3 w-3" /> Approuver
+                                  </button>
+                                  <button 
+                                    onClick={() => handleRejectDoc(doc.id)}
+                                    className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
+                                  >
+                                    <X className="h-3 w-3" /> Rejeter
+                                  </button>
+                                </>
+                              ) : doc.status === 'Approuvée' ? (
+                                <button
+                                  onClick={() => window.open(`${api.defaults.baseURL || 'http://127.0.0.1:8000/api'}/admin/documents/${doc.id}/pdf?token=${localStorage.getItem('token')}`, '_blank')}
+                                  className="px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-750 hover:bg-indigo-100 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
+                                >
+                                  📥 Télécharger le PDF
+                                </button>
+                              ) : (
+                                <span className="text-slate-400 text-[10px] font-bold uppercase italic p-1">Refusé</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\LogbookController;
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/admin/documents/{id}/pdf', [DocumentRequestController::class, 'downloadPdf']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
