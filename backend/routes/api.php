@@ -57,6 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/professor/groups/{id}/students', [GroupController::class, 'getStudents']);
     Route::get('/professor/groups', [GroupController::class, 'index']);
     Route::get('/professor/absences', [AbsenceController::class, 'getProfessorAbsences']);
+    Route::get('/professor/logbooks', [LogbookController::class, 'index']);
+    Route::post('/professor/logbooks', [LogbookController::class, 'store']);
 
     // Secured Administration API Routes
     Route::middleware('role:admin')->group(function () {

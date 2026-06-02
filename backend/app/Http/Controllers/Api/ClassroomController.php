@@ -58,13 +58,24 @@ class ClassroomController extends Controller
             'module_id' => 'required|exists:modules,id',
             'title' => 'required|string|max:255',
             'content' => 'required|string',
+            'file' => 'nullable|file|mimes:pdf,docx,pptx,zip,jpg,png|max:5120',
         ]);
+
+        $filePath = null;
+        $fileName = null;
+
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('announcements', 'public');
+            $fileName = $request->file('file')->getClientOriginalName();
+        }
 
         $announcement = Announcement::create([
             'module_id' => $request->module_id,
             'professor_id' => $request->user()->id,
             'title' => $request->title,
             'content' => $request->input('content'),
+            'file_path' => $filePath,
+            'file_name' => $fileName,
         ]);
 
         return response()->json([
