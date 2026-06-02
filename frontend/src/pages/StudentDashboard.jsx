@@ -160,8 +160,9 @@ export default function StudentDashboard() {
     setTimeout(() => setDocNotification(''), 4000);
   };
 
-  const handleDownloadPDF = (docType) => {
-    alert(`Téléchargement en cours du PDF officiel signé numériquement : ${docType}`);
+  const handleDownloadPDF = (docId) => {
+    const url = `${api.defaults.baseURL || 'http://127.0.0.1:8000/api'}/admin/documents/${docId}/pdf?token=${localStorage.getItem('token')}`;
+    window.open(url, '_blank');
   };
 
   return (
@@ -440,7 +441,7 @@ export default function StudentDashboard() {
                       </span>
                       {req.status === 'Approuvée' && (
                         <button 
-                          onClick={() => handleDownloadPDF(req.docType)}
+                          onClick={() => handleDownloadPDF(req.id)}
                           className="h-8 w-8 rounded-lg bg-indigo-50 border border-indigo-150 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center transition-all shadow-sm"
                         >
                           <Download className="h-4 w-4" />
