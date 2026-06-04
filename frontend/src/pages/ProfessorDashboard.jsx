@@ -25,6 +25,8 @@ const getDisplaySlots = (slots) => {
         ...slot,
         displayId: `${slot.id}-1`,
         sessionPart: 1,
+        computed_start: '08:30',
+        computed_end: '10:00',
         displayTime: slot.time || 'Séance'
       });
       return;
@@ -52,12 +54,16 @@ const getDisplaySlots = (slots) => {
         ...slot,
         displayId: `${slot.id}-1`,
         sessionPart: 1,
+        computed_start: s1_start,
+        computed_end: s1_end,
         displayTime: `${slot.day} (${s1_start} - ${s1_end}) - Séance 1 (1h30)`
       });
       list.push({
         ...slot,
         displayId: `${slot.id}-2`,
         sessionPart: 2,
+        computed_start: s2_start,
+        computed_end: s2_end,
         displayTime: `${slot.day} (${s2_start} - ${s2_end}) - Séance 2 (1h30)`
       });
     } else {
@@ -66,6 +72,8 @@ const getDisplaySlots = (slots) => {
         ...slot,
         displayId: `${slot.id}-1`,
         sessionPart: 1,
+        computed_start: slot.start_time.substring(0, 5),
+        computed_end: slot.end_time.substring(0, 5),
         displayTime: `${slot.day} (${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)})`
       });
     }
@@ -104,11 +112,16 @@ export default function ProfessorDashboard() {
   const [reservationMessage, setReservationMessage] = useState(null);
 
   // 4. Logbook (Cahier de Textes) State
-  const [logbookEntries, setLogbookEntries] = useState([
-    { id: 1, module: 'Technologie Web 2 (React & Laravel)', date: '2026-05-27', duration: '2h', topic: 'Architecture REST API et JWT avec Laravel', summary: 'Introduction aux architectures stateless, installation de Sanctum, configuration des CORS, écriture des contrôleurs API et tests de requêtes JSON.' },
-    { id: 2, module: 'Technologie Web 2 (React & Laravel)', date: '2026-05-20', duration: '2h', topic: 'Introduction à React et State Management', summary: 'Création d\'un projet React Vite, cycle de vie des composants, gestion de l\'état local avec useState et contextes avec useContext.' },
-  ]);
-  const [newLogbook, setNewLogbook] = useState({ date: '2026-05-28', duration: '2h', topic: '', summary: '' });
+  const [logbookEntries, setLogbookEntries] = useState([]);
+  const [newLogbook, setNewLogbook] = useState({
+    date: new Date().toISOString().substring(0, 10),
+    start_time: '08:30',
+    end_time: '10:00',
+    nature: 'Cours',
+    timetable_id: '',
+    objective: ''
+  });
+  const [selectedLogbookSlotKey, setSelectedLogbookSlotKey] = useState('');
 
   // Emplois du temps stockés pour retrouver le timetable_id lié à l'appel
   const [dbTimetables, setDbTimetables] = useState([]);
@@ -261,26 +274,72 @@ export default function ProfessorDashboard() {
     }
   }, [selectedGroupId, selectedAttendanceModuleId, dbTimetables]);
 
-  // Fetch rooms list when reservations tab is active
-  useEffect(() => {
-    if (activeTab !== 'reservations') return;
+  const fetchRoomsList = async () => {
+    try {
+      const res = await api.get('/reservations/rooms');
+      setRooms(res.data.map(room => ({
+        id: room.id,
+        name: room.name,
+        type: room.type,
+        capacity: room.capacity,
+        reservedSlots: room.reservations ? room.reservations.map(resv => `${resv.date} ${resv.start_time.substring(0, 5)}-${resv.end_time.substring(0, 5)}`) : []
+      })));
+    } catch (e) {
+      console.warn("Could not fetch rooms from API", e);
+    }
+  };
 
-    const fetchRooms = async () => {
-      try {
-        const res = await api.get('/reservations/rooms');
-        setRooms(res.data.map(room => ({
-          id: room.id,
-          name: room.name,
-          type: room.type,
-          capacity: room.capacity,
-          reservedSlots: room.reservations ? room.reservations.map(resv => `${resv.date} ${resv.start_time.substring(0,5)}-${resv.end_time.substring(0,5)}`) : []
-        })));
-      } catch (e) {
-        console.warn("Could not fetch rooms from API", e);
-      }
-    };
-    fetchRooms();
+  const fetchLogbooks = async () => {
+    try {
+      const res = await api.get('/professor/logbooks');
+      setLogbookEntries(res.data);
+    } catch (err) {
+      console.warn("Could not load logbooks:", err);
+    }
+  };
+
+  // Fetch rooms list when rooms tab is active
+  useEffect(() => {
+    if (activeTab === 'rooms') {
+      fetchRoomsList();
+    }
   }, [activeTab]);
+
+  // Fetch logbooks list when logbook tab is active
+  useEffect(() => {
+    if (activeTab === 'logbook') {
+      fetchLogbooks();
+    }
+  }, [activeTab]);
+
+  const logbookDisplaySlots = getDisplaySlots(dbTimetables);
+
+  const handleLogbookSlotChange = (key) => {
+    setSelectedLogbookSlotKey(key);
+    const foundSlot = logbookDisplaySlots.find(slot => slot.displayId === key);
+    if (foundSlot) {
+      setNewLogbook(prev => ({
+        ...prev,
+        timetable_id: foundSlot.id.toString(),
+        start_time: foundSlot.computed_start,
+        end_time: foundSlot.computed_end
+      }));
+    }
+  };
+
+  // Auto-initialize selectedLogbookSlotKey when dbTimetables is populated
+  useEffect(() => {
+    if (logbookDisplaySlots.length > 0 && !selectedLogbookSlotKey) {
+      const firstSlot = logbookDisplaySlots[0];
+      setSelectedLogbookSlotKey(firstSlot.displayId);
+      setNewLogbook(prev => ({
+        ...prev,
+        timetable_id: firstSlot.id.toString(),
+        start_time: firstSlot.computed_start,
+        end_time: firstSlot.computed_end
+      }));
+    }
+  }, [dbTimetables, logbookDisplaySlots]);
 
   // Fetch student grades for the selected group & module
   useEffect(() => {
@@ -450,36 +509,67 @@ export default function ProfessorDashboard() {
 
   const handleReserve = async (e) => {
     e.preventDefault();
+    const selectedRoomObj = rooms.find(r => r.id === Number(reserveForm.roomId));
+    if (selectedRoomObj) {
+      const targetSlotString = `${reserveForm.date} ${reserveForm.slot}`;
+      const isReserved = selectedRoomObj.reservedSlots.some(slotStr => slotStr === targetSlotString);
+      if (isReserved) {
+        setReservationMessage({ type: 'error', text: 'Cette salle est déjà réservée pour ce créneau horaire.' });
+        setTimeout(() => setReservationMessage(null), 5000);
+        return;
+      }
+    }
+
     try {
       await api.post('/reservations', {
-        room_id: reserveForm.roomId,
+        room_id: Number(reserveForm.roomId),
         date: reserveForm.date,
         slot: reserveForm.slot,
         purpose: 'Cours supplémentaire'
       });
-      const room = rooms.find(r => r.id === parseInt(reserveForm.roomId));
-      const targetSlotString = `${reserveForm.date} ${reserveForm.slot}`;
-      setRooms(rooms.map(r => 
-        r.id === room.id ? { ...r, reservedSlots: [...r.reservedSlots, targetSlotString] } : r
-      ));
-      setReservationMessage({ type: 'success', text: `Réservation validée avec succès pour la ${room.name} !` });
+      setReservationMessage({ type: 'success', text: "Réservation validée avec succès !" });
+      fetchRoomsList();
     } catch (err) {
-      const room = rooms.find(r => r.id === parseInt(reserveForm.roomId));
-      const targetSlotString = `${reserveForm.date} ${reserveForm.slot}`;
-      setRooms(rooms.map(r => 
-        r.id === room.id ? { ...r, reservedSlots: [...r.reservedSlots, targetSlotString] } : r
-      ));
-      setReservationMessage({ type: 'success', text: `Réservation validée avec succès (simulation) !` });
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Erreur lors de la réservation.";
+      setReservationMessage({ type: 'error', text: errMsg });
     }
     setTimeout(() => setReservationMessage(null), 5000);
   };
 
-  const handleAddLogbook = (e) => {
+  const handleAddLogbook = async (e) => {
     e.preventDefault();
-    if (!newLogbook.topic || !newLogbook.summary) return;
-    setLogbookEntries([{ id: Date.now(), module: selectedModule, ...newLogbook }, ...logbookEntries]);
-    setNewLogbook({ date: '2026-05-28', duration: '2h', topic: '', summary: '' });
-    setNotification('Séance ajoutée au cahier de textes !');
+    if (!newLogbook.timetable_id) {
+      setNotification("Erreur : Veuillez sélectionner un créneau d'emploi du temps.");
+      setTimeout(() => setNotification(''), 4000);
+      return;
+    }
+    if (!newLogbook.objective || newLogbook.objective.length < 10) {
+      setNotification("Erreur : Le sujet/objectif doit contenir au moins 10 caractères.");
+      setTimeout(() => setNotification(''), 4000);
+      return;
+    }
+
+    try {
+      await api.post('/professor/logbooks', {
+        timetable_id: Number(newLogbook.timetable_id),
+        date: newLogbook.date,
+        start_time: newLogbook.start_time,
+        end_time: newLogbook.end_time,
+        nature: newLogbook.nature,
+        objective: newLogbook.objective
+      });
+      setNotification("Séance ajoutée au cahier de textes avec succès !");
+      fetchLogbooks();
+      setNewLogbook(prev => ({
+        ...prev,
+        objective: ''
+      }));
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Erreur lors de l'enregistrement de la séance.";
+      setNotification("Erreur : " + errMsg);
+    }
     setTimeout(() => setNotification(''), 4000);
   };
 
@@ -923,21 +1013,31 @@ export default function ProfessorDashboard() {
             <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">Séances Consignées</h3>
               <div className="space-y-4">
-                {logbookEntries.map(entry => (
-                  <div key={entry.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                    <div className="flex justify-between items-center border-b border-slate-200/60 pb-2 mb-3">
-                      <div>
-                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">{entry.module}</span>
-                        <h4 className="text-xs font-bold text-slate-900 mt-1">{entry.topic}</h4>
+                {logbookEntries.length === 0 ? (
+                  <p className="text-slate-500 text-xs text-center py-6">Aucune séance consignée.</p>
+                ) : (
+                  logbookEntries.map(entry => (
+                    <div key={entry.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
+                      <div className="flex justify-between items-center border-b border-slate-200/60 pb-2 mb-3">
+                        <div>
+                          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+                            {entry.timetable?.module?.name || 'Matière'}
+                          </span>
+                          <h4 className="text-xs font-bold text-slate-900 mt-1">{entry.objective}</h4>
+                        </div>
+                        <div className="text-right">
+                          <span className="block text-[10px] text-slate-450">{entry.date}</span>
+                          <span className="inline-block px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600 text-[8px] font-bold mt-1 shadow-sm">
+                            {entry.start_time ? entry.start_time.substring(0, 5) : ''} - {entry.end_time ? entry.end_time.substring(0, 5) : ''} ({entry.nature})
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className="block text-[10px] text-slate-450">{entry.date}</span>
-                        <span className="inline-block px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600 text-[8px] font-bold mt-1 shadow-sm">{entry.duration}</span>
-                      </div>
+                      {entry.timetable?.group?.name && (
+                        <p className="text-slate-550 text-[10px] font-semibold">Classe : {entry.timetable.group.name}</p>
+                      )}
                     </div>
-                    <p className="text-slate-600 text-xs leading-relaxed">{entry.summary}</p>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -945,48 +1045,76 @@ export default function ProfessorDashboard() {
             <form onSubmit={handleAddLogbook} className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Consigner une Séance</h3>
               
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Date</label>
                   <input 
                     type="date"
+                    disabled
                     value={newLogbook.date}
-                    onChange={e => setNewLogbook({ ...newLogbook, date: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-500 outline-none cursor-not-allowed"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Durée</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nature de la séance</label>
                   <select
-                    value={newLogbook.duration}
-                    onChange={e => setNewLogbook({ ...newLogbook, duration: e.target.value })}
+                    value={newLogbook.nature}
+                    onChange={e => setNewLogbook({ ...newLogbook, nature: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 outline-none focus:bg-white focus:border-indigo-500"
                   >
-                    <option value="1h">1 heure</option>
-                    <option value="1h30">1h 30min</option>
-                    <option value="2h">2 heures</option>
-                    <option value="3h">3 heures</option>
+                    <option value="Cours">Cours</option>
+                    <option value="TD">TD</option>
+                    <option value="TP">TP</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sujet / Objectif</label>
-                <input 
-                  type="text"
-                  value={newLogbook.topic}
-                  onChange={e => setNewLogbook({ ...newLogbook, topic: e.target.value })}
-                  placeholder="Ex: Routage Dynamique sous React"
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Heure de début</label>
+                  <input 
+                    type="time"
+                    value={newLogbook.start_time}
+                    onChange={e => setNewLogbook({ ...newLogbook, start_time: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Heure de fin</label>
+                  <input 
+                    type="time"
+                    value={newLogbook.end_time}
+                    onChange={e => setNewLogbook({ ...newLogbook, end_time: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Résumé / Travaux demandés</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Créneau d'emploi du temps</label>
+                <select
+                  value={selectedLogbookSlotKey}
+                  onChange={e => handleLogbookSlotChange(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-650 outline-none focus:bg-white focus:border-indigo-500"
+                >
+                  {logbookDisplaySlots.length === 0 ? (
+                    <option value="">Aucun créneau disponible</option>
+                  ) : (
+                    logbookDisplaySlots.map(slot => (
+                      <option key={slot.displayId} value={slot.displayId}>
+                        {slot.displayTime} | {slot.module} ({slot.group})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sujet / Objectif (min. 10 caractères)</label>
                 <textarea 
                   rows="4"
-                  value={newLogbook.summary}
-                  onChange={e => setNewLogbook({ ...newLogbook, summary: e.target.value })}
+                  value={newLogbook.objective}
+                  onChange={e => setNewLogbook({ ...newLogbook, objective: e.target.value })}
                   placeholder="Détails du cours et exercices à préparer pour la séance suivante..."
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 resize-none leading-relaxed"
                 />
