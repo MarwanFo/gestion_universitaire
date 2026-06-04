@@ -44,6 +44,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/classroom/modules', [ClassroomController::class, 'modules']);
     Route::get('/classroom/modules/{id}', [ClassroomController::class, 'index']);
     Route::post('/classroom/announcements', [ClassroomController::class, 'storeAnnouncement']);
+    Route::post('/classroom/announcements/{id}', [ClassroomController::class, 'updateAnnouncement']);
+    Route::delete('/classroom/announcements/{id}', [ClassroomController::class, 'destroyAnnouncement']);
     Route::post('/classroom/announcements/{id}/comments', [ClassroomController::class, 'storeComment']);
 
     // Salles et réservations

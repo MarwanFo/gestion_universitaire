@@ -85,6 +85,63 @@ class ClassroomController extends Controller
     }
 
     /**
+     * Modifier une annonce (Enseignant).
+     */
+    public function updateAnnouncement(Request $request, $id)
+    {
+        $announcement = Announcement::findOrFail($id);
+
+        if ($request->user()->role !== 'professor' || $announcement->professor_id !== $request->user()->id) {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'file' => 'nullable|file|mimes:pdf,docx,pptx,zip,jpg,png|max:5120',
+        ]);
+
+        $announcement->title = $request->title;
+        $announcement->content = $request->input('content');
+
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('announcements', 'public');
+            $fileName = $request->file('file')->getClientOriginalName();
+            $announcement->file_path = $filePath;
+            $announcement->file_name = $fileName;
+        }
+
+        $announcement->save();
+
+        return response()->json([
+            'message' => 'Annonce modifiée avec succès.',
+            'announcement' => $announcement->load('professor')
+        ]);
+    }
+
+    /**
+     * Supprimer une annonce (Enseignant).
+     */
+    public function destroyAnnouncement(Request $request, $id)
+    {
+        $announcement = Announcement::findOrFail($id);
+
+        if ($request->user()->role !== 'professor' || $announcement->professor_id !== $request->user()->id) {
+            return response()->json(['message' => 'Accès interdit.'], 403);
+        }
+
+        if ($announcement->file_path) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($announcement->file_path);
+        }
+
+        $announcement->delete();
+
+        return response()->json([
+            'message' => 'Annonce supprimée avec succès.'
+        ]);
+    }
+
+    /**
      * Poster un commentaire (Étudiant ou Enseignant).
      */
     public function storeComment(Request $request, $announcementId)

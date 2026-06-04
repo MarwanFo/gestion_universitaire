@@ -17,7 +17,10 @@ import {
   Paperclip,
   Download,
   FileText,
-  Layers
+  Layers,
+  Edit,
+  X,
+  Trash2
 } from 'lucide-react';
 
 // Helper to split 3-hour slots into two 1h30 sessions
@@ -142,6 +145,7 @@ export default function ProfessorDashboard() {
   const [isAnnouncementsLoading, setIsAnnouncementsLoading] = useState(false);
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '' });
   const [attachedFile, setAttachedFile] = useState(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const fileInputRef = useRef(null);
 
   // Nouveaux états de filtrage progressif pour l'Appel (Absences)
@@ -354,20 +358,32 @@ export default function ProfessorDashboard() {
 
     try {
       const formData = new FormData();
-      formData.append('module_id', selectedClassroomModuleId);
       formData.append('title', announcementForm.title);
       formData.append('content', announcementForm.content);
       if (attachedFile) {
         formData.append('file', attachedFile);
       }
 
-      await api.post('/classroom/announcements', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      if (editingAnnouncement) {
+        // Mode modification
+        await api.post(`/classroom/announcements/${editingAnnouncement.id}`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        setNotification("Annonce modifiée avec succès !");
+        setEditingAnnouncement(null);
+      } else {
+        // Mode création
+        formData.append('module_id', selectedClassroomModuleId);
+        await api.post('/classroom/announcements', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        setNotification("Annonce publiée avec succès !");
+      }
 
-      setNotification("Annonce publiée avec succès !");
       setAnnouncementForm({ title: '', content: '' });
       setAttachedFile(null);
       if (fileInputRef.current) {
@@ -376,7 +392,45 @@ export default function ProfessorDashboard() {
       fetchClassroomAnnouncements(selectedClassroomModuleId);
     } catch (err) {
       console.error(err);
-      const errMsg = err.response?.data?.message || "Erreur lors de la publication de l'annonce.";
+      const errMsg = err.response?.data?.message || "Erreur lors de l'enregistrement de l'annonce.";
+      setNotification("Erreur : " + errMsg);
+    }
+    setTimeout(() => setNotification(''), 4000);
+  };
+
+  const startEditAnnouncement = (ann) => {
+    setEditingAnnouncement(ann);
+    setAnnouncementForm({
+      title: ann.title,
+      content: ann.content
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditAnnouncement = () => {
+    setEditingAnnouncement(null);
+    setAnnouncementForm({ title: '', content: '' });
+    setAttachedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette annonce ?")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/classroom/announcements/${id}`);
+      setNotification("Annonce supprimée avec succès !");
+      if (editingAnnouncement && editingAnnouncement.id === id) {
+        cancelEditAnnouncement();
+      }
+      fetchClassroomAnnouncements(selectedClassroomModuleId);
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Erreur lors de la suppression de l'annonce.";
       setNotification("Erreur : " + errMsg);
     }
     setTimeout(() => setNotification(''), 4000);
@@ -1508,10 +1562,18 @@ export default function ProfessorDashboard() {
                 </div>
               ) : (
                 <>
-                  {/* Form to publish a new announcement */}
+                  {/* Form to publish/edit an announcement */}
                   <form onSubmit={handlePublishAnnouncement} className="bg-white rounded-2xl border border-slate-200/85 p-6 shadow-sm shadow-slate-100/50 space-y-4">
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                      <Plus className="h-4 w-4 text-indigo-500" /> Publier un support de cours / annonce
+                      {editingAnnouncement ? (
+                        <>
+                          <Edit className="h-4 w-4 text-amber-500 animate-pulse" /> Modifier l'annonce / support de cours
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 text-indigo-500" /> Publier un support de cours / annonce
+                        </>
+                      )}
                     </h3>
                     
                     <div className="space-y-3">
@@ -1538,7 +1600,9 @@ export default function ProfessorDashboard() {
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Fichier joint (PDF, PPTX, ZIP, Images - Max 5Mo)</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                          {editingAnnouncement ? "Remplacer le fichier joint (optionnel)" : "Fichier joint (PDF, PPTX, ZIP, Images - Max 5Mo)"}
+                        </label>
                         <div className="relative border border-dashed border-slate-300 hover:border-indigo-500 rounded-xl bg-slate-50 hover:bg-slate-100/50 p-6 transition-colors cursor-pointer flex flex-col items-center justify-center">
                           <input
                             type="file"
@@ -1549,7 +1613,7 @@ export default function ProfessorDashboard() {
                           />
                           <Paperclip className="h-5 w-5 text-slate-400 mb-2" />
                           <span className="text-[10px] font-bold text-slate-500 text-center">
-                            {attachedFile ? attachedFile.name : "Cliquez ou glissez un fichier ici pour le joindre"}
+                            {attachedFile ? attachedFile.name : editingAnnouncement && editingAnnouncement.file_name ? `Fichier actuel : ${editingAnnouncement.file_name} (cliquez pour remplacer)` : "Cliquez ou glissez un fichier ici pour le joindre"}
                           </span>
                           {attachedFile && (
                             <span className="text-[9px] font-extrabold text-indigo-600 mt-1.5 uppercase tracking-wider">
@@ -1560,12 +1624,22 @@ export default function ProfessorDashboard() {
                       </div>
                     </div>
 
-                    <div className="flex justify-end pt-1">
+                    <div className="flex justify-end gap-2 pt-1">
+                      {editingAnnouncement && (
+                        <button
+                          type="button"
+                          onClick={cancelEditAnnouncement}
+                          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          Annuler
+                        </button>
+                      )}
                       <button
                         type="submit"
-                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+                        className={`px-5 py-2.5 ${editingAnnouncement ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'} text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2`}
                       >
-                        Publier l'Annonce
+                        {editingAnnouncement ? 'Enregistrer les modifications' : "Publier l'Annonce"}
                       </button>
                     </div>
                   </form>
@@ -1590,18 +1664,46 @@ export default function ProfessorDashboard() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {classroomAnnouncements.map(ann => (
-                          <div key={ann.id} className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm shadow-slate-100/50">
-                            <div className="flex justify-between items-start gap-4 mb-3">
-                              <h4 className="text-xs font-extrabold text-indigo-950 uppercase tracking-wide leading-snug">{ann.title}</h4>
-                              <span className="text-[10px] text-slate-450 font-bold whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded">
-                                {new Date(ann.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                              </span>
+                        {classroomAnnouncements.map(ann => {
+                          const isEdited = ann.created_at && ann.updated_at && (new Date(ann.updated_at).getTime() - new Date(ann.created_at).getTime() > 2000);
+                          return (
+                            <div key={ann.id} className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm shadow-slate-100/50">
+                              <div className="flex justify-between items-start gap-4 mb-3">
+                                <div className="space-y-1">
+                                  <h4 className="text-xs font-extrabold text-indigo-950 uppercase tracking-wide leading-snug">{ann.title}</h4>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-slate-450 font-bold whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded">
+                                      {new Date(ann.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    {isEdited && (
+                                      <span className="text-[9px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase tracking-wider">
+                                        Modifié
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => startEditAnnouncement(ann)}
+                                    className="p-1.5 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all border border-transparent hover:border-amber-150"
+                                    title="Modifier cette annonce"
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteAnnouncement(ann.id)}
+                                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-150"
+                                    title="Supprimer cette annonce"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="text-slate-650 text-xs leading-relaxed whitespace-pre-line">{ann.content}</p>
+                              {renderFileAttachment(ann.file_path)}
                             </div>
-                            <p className="text-slate-650 text-xs leading-relaxed whitespace-pre-line">{ann.content}</p>
-                            {renderFileAttachment(ann.file_path)}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
