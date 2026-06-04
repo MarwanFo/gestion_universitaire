@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { 
@@ -13,7 +13,11 @@ import {
   LogOut,
   Building,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Paperclip,
+  Download,
+  FileText,
+  Layers
 } from 'lucide-react';
 
 // Helper to split 3-hour slots into two 1h30 sessions
@@ -125,7 +129,20 @@ export default function ProfessorDashboard() {
 
   // Emplois du temps stockés pour retrouver le timetable_id lié à l'appel
   const [dbTimetables, setDbTimetables] = useState([]);
+  const [groupedTimetables, setGroupedTimetables] = useState([]);
   const [selectedTimetableKey, setSelectedTimetableKey] = useState('');
+
+  // 5. Classroom (Espace Cours) State
+  const [selectedClassroomFiliereId, setSelectedClassroomFiliereId] = useState('');
+  const [filteredClassroomGroups, setFilteredClassroomGroups] = useState([]);
+  const [selectedClassroomGroupId, setSelectedClassroomGroupId] = useState('');
+  const [filteredClassroomModules, setFilteredClassroomModules] = useState([]);
+  const [selectedClassroomModuleId, setSelectedClassroomModuleId] = useState('');
+  const [classroomAnnouncements, setClassroomAnnouncements] = useState([]);
+  const [isAnnouncementsLoading, setIsAnnouncementsLoading] = useState(false);
+  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '' });
+  const [attachedFile, setAttachedFile] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Nouveaux états de filtrage progressif pour l'Appel (Absences)
   const [filieres, setFilieres] = useState([]);
@@ -159,6 +176,7 @@ export default function ProfessorDashboard() {
           }
         });
         setDbTimetables(flatSlots);
+        setGroupedTimetables(timetablesRes.data);
         
         if (modulesRes.data.length > 0) {
           setSelectedModule(modulesRes.data[0].id.toString());
@@ -312,6 +330,130 @@ export default function ProfessorDashboard() {
     }
   }, [activeTab]);
 
+  const storageBaseUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api').replace('/api', '/storage');
+
+  const fetchClassroomAnnouncements = async (moduleId) => {
+    try {
+      setIsAnnouncementsLoading(true);
+      const res = await api.get(`/classroom/modules/${moduleId}`);
+      setClassroomAnnouncements(res.data);
+    } catch (err) {
+      console.warn("Could not load classroom announcements:", err);
+    } finally {
+      setIsAnnouncementsLoading(false);
+    }
+  };
+
+  const handlePublishAnnouncement = async (e) => {
+    e.preventDefault();
+    if (!announcementForm.title || !announcementForm.content) {
+      setNotification("Erreur : Veuillez remplir le titre et le contenu.");
+      setTimeout(() => setNotification(''), 4000);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('module_id', selectedClassroomModuleId);
+      formData.append('title', announcementForm.title);
+      formData.append('content', announcementForm.content);
+      if (attachedFile) {
+        formData.append('file', attachedFile);
+      }
+
+      await api.post('/classroom/announcements', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setNotification("Annonce publiée avec succès !");
+      setAnnouncementForm({ title: '', content: '' });
+      setAttachedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      fetchClassroomAnnouncements(selectedClassroomModuleId);
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Erreur lors de la publication de l'annonce.";
+      setNotification("Erreur : " + errMsg);
+    }
+    setTimeout(() => setNotification(''), 4000);
+  };
+
+  // Initialize classroom filiere
+  useEffect(() => {
+    if (filieres.length > 0 && !selectedClassroomFiliereId) {
+      setSelectedClassroomFiliereId(filieres[0].id.toString());
+    }
+  }, [filieres, selectedClassroomFiliereId]);
+
+  // Filter classroom groups when selectedClassroomFiliereId changes
+  useEffect(() => {
+    if (!selectedClassroomFiliereId) {
+      setFilteredClassroomGroups([]);
+      setSelectedClassroomGroupId('');
+      return;
+    }
+
+    const gMap = {};
+    dbTimetables.forEach(slot => {
+      if (slot.group_details && slot.group_details.field && slot.group_details.field.id.toString() === selectedClassroomFiliereId.toString()) {
+        gMap[slot.group_details.id] = slot.group_details.name;
+      }
+    });
+
+    const gList = Object.keys(gMap).map(id => ({
+      id: Number(id),
+      name: gMap[id]
+    }));
+    setFilteredClassroomGroups(gList);
+
+    if (gList.length > 0) {
+      setSelectedClassroomGroupId(gList[0].id.toString());
+    } else {
+      setSelectedClassroomGroupId('');
+    }
+  }, [selectedClassroomFiliereId, dbTimetables]);
+
+  // Filter classroom modules when selectedClassroomGroupId changes
+  useEffect(() => {
+    if (!selectedClassroomGroupId) {
+      setFilteredClassroomModules([]);
+      setSelectedClassroomModuleId('');
+      return;
+    }
+
+    const mMap = {};
+    dbTimetables.forEach(slot => {
+      if (slot.group_id && slot.group_id.toString() === selectedClassroomGroupId.toString()) {
+        mMap[slot.module_id] = slot.module;
+      }
+    });
+
+    const mList = Object.keys(mMap).map(id => ({
+      id: Number(id),
+      name: mMap[id]
+    }));
+    setFilteredClassroomModules(mList);
+
+    if (mList.length > 0) {
+      setSelectedClassroomModuleId(mList[0].id.toString());
+    } else {
+      setSelectedClassroomModuleId('');
+    }
+  }, [selectedClassroomGroupId, dbTimetables]);
+
+  // Fetch announcements when activeTab is classroom and module changes
+  useEffect(() => {
+    if (activeTab === 'classroom' && selectedClassroomModuleId) {
+      fetchClassroomAnnouncements(selectedClassroomModuleId);
+    } else if (activeTab === 'classroom' && !selectedClassroomModuleId) {
+      setClassroomAnnouncements([]);
+    }
+  }, [activeTab, selectedClassroomModuleId]);
+
   const logbookDisplaySlots = getDisplaySlots(dbTimetables);
 
   const handleLogbookSlotChange = (key) => {
@@ -340,6 +482,53 @@ export default function ProfessorDashboard() {
       }));
     }
   }, [dbTimetables, logbookDisplaySlots]);
+
+  const getFileExtensionInfo = (fileName) => {
+    if (!fileName) return { ext: 'FILE', color: 'text-slate-600 border-slate-200 bg-slate-50', iconColor: 'text-slate-500' };
+    const ext = fileName.split('.').pop().toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return { ext: 'PDF', color: 'text-rose-650 border-rose-100 bg-rose-50/50 hover:bg-rose-100/50', iconColor: 'text-rose-500' };
+      case 'docx':
+      case 'doc':
+        return { ext: 'Word', color: 'text-blue-650 border-blue-100 bg-blue-50/50 hover:bg-blue-100/50', iconColor: 'text-blue-500' };
+      case 'pptx':
+      case 'ppt':
+        return { ext: 'PPTX', color: 'text-orange-650 border-orange-100 bg-orange-50/50 hover:bg-orange-100/50', iconColor: 'text-orange-500' };
+      case 'zip':
+      case 'rar':
+        return { ext: 'ZIP', color: 'text-amber-650 border-amber-100 bg-amber-50/50 hover:bg-amber-100/50', iconColor: 'text-amber-500' };
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return { ext: 'Image', color: 'text-emerald-650 border-emerald-100 bg-emerald-50/50 hover:bg-emerald-100/50', iconColor: 'text-emerald-500' };
+      default:
+        return { ext: ext.toUpperCase(), color: 'text-indigo-650 border-indigo-100 bg-indigo-50/50 hover:bg-indigo-100/50', iconColor: 'text-indigo-500' };
+    }
+  };
+
+  const renderFileAttachment = (filePath) => {
+    if (!filePath) return null;
+    const fileName = filePath.split('/').pop();
+    const info = getFileExtensionInfo(fileName);
+    const fileUrl = `${storageBaseUrl}/${filePath}`;
+
+    return (
+      <a
+        href={fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`inline-flex items-center gap-2 px-3.5 py-2 border rounded-xl text-xs font-bold transition-all ${info.color} mt-3 shadow-sm`}
+      >
+        <Download className={`h-3.5 w-3.5 ${info.iconColor}`} />
+        <span className="truncate max-w-[200px]">{fileName}</span>
+        <span className="text-[9px] font-extrabold opacity-60 uppercase">
+          [{info.ext}]
+        </span>
+      </a>
+    );
+  };
 
   // Fetch student grades for the selected group & module
   useEffect(() => {
@@ -639,6 +828,30 @@ export default function ProfessorDashboard() {
             >
               <Clock className="h-4 w-4" />
               Cahier de Textes
+            </button>
+
+            <button
+              onClick={() => setActiveTab('timetable')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'timetable' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/80 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-550 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <Calendar className="h-4 w-4" />
+              Emploi du Temps
+            </button>
+
+            <button
+              onClick={() => setActiveTab('classroom')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'classroom' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/80 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-550 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <Layers className="h-4 w-4" />
+              Espace Cours (Classroom)
             </button>
           </nav>
         </div>
@@ -1124,6 +1337,277 @@ export default function ProfessorDashboard() {
                 Ajouter la séance
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Tab 5: Emploi du Temps */}
+        {activeTab === 'timetable' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Mon Emploi du Temps Hebdomadaire</h2>
+              <span className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                Semestre Actuel
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(day => {
+                const dayData = groupedTimetables.find(d => d.day === day);
+                const slots = dayData?.slots || [];
+                return (
+                  <div key={day} className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm shadow-slate-100/50 flex flex-col min-h-[350px]">
+                    <div className="border-b border-slate-150 pb-2 mb-3">
+                      <h3 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider">{day}</h3>
+                    </div>
+                    <div className="space-y-3 flex-1 flex flex-col justify-start">
+                      {slots.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center text-slate-400 text-xs italic py-10">
+                          Aucun cours
+                        </div>
+                      ) : (
+                        slots.map(slot => (
+                          <div key={slot.id} className="p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 border border-slate-200/60 hover:border-indigo-150 transition-all duration-200 group relative">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <Clock className="h-3 w-3 text-slate-400 group-hover:text-indigo-500" />
+                              <span className="text-[10px] font-bold text-slate-500 group-hover:text-indigo-600">
+                                {slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-bold text-slate-850 line-clamp-2 leading-snug group-hover:text-indigo-950 mb-1.5">
+                              {slot.module?.name || 'Matière'}
+                            </h4>
+                            {slot.module?.code && (
+                              <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-2.5">
+                                {slot.module.code}
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold border-t border-slate-200/40 pt-2 mt-auto">
+                              <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[8px] font-extrabold text-slate-600">
+                                {slot.group?.name || 'Classe'}
+                              </span>
+                              <span className="text-[9px] font-extrabold text-indigo-600">
+                                {slot.room?.name || 'Salle'}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 6: Espace Cours (Classroom) */}
+        {activeTab === 'classroom' && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fadeIn">
+            {/* Left sidebar: Progressive Filtering (Filière -> Groupe -> Matière) */}
+            <div className="lg:col-span-1 space-y-5">
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
+                  <Search className="h-4 w-4 text-indigo-500" />
+                  Filtrage Espace Cours
+                </h3>
+
+                {/* 1. Sélection de la Filière */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">1. Filière</label>
+                  <select
+                    value={selectedClassroomFiliereId}
+                    onChange={e => setSelectedClassroomFiliereId(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500 transition-all font-semibold"
+                  >
+                    {filieres.length === 0 ? (
+                      <option value="">Aucune filière disponible</option>
+                    ) : (
+                      <>
+                        <option value="">Choisir une filière...</option>
+                        {filieres.map(fil => (
+                          <option key={fil.id} value={fil.id}>
+                            {fil.name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* 2. Sélection du Groupe (cascadé) */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">2. Groupe / Classe</label>
+                  <select
+                    value={selectedClassroomGroupId}
+                    onChange={e => setSelectedClassroomGroupId(e.target.value)}
+                    disabled={!selectedClassroomFiliereId}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs outline-none transition-all font-semibold ${
+                      !selectedClassroomFiliereId 
+                        ? 'bg-slate-100 border-slate-200 text-slate-405 cursor-not-allowed' 
+                        : 'bg-slate-50 border-slate-200 text-slate-700 focus:bg-white focus:border-indigo-500'
+                    }`}
+                  >
+                    {!selectedClassroomFiliereId ? (
+                      <option value="">Sélectionnez d'abord une filière</option>
+                    ) : filteredClassroomGroups.length === 0 ? (
+                      <option value="">Aucun groupe trouvé</option>
+                    ) : (
+                      <>
+                        <option value="">Choisir un groupe...</option>
+                        {filteredClassroomGroups.map(grp => (
+                          <option key={grp.id} value={grp.id}>
+                            {grp.name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* 3. Sélection de la Matière (cascadée) */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">3. Matière / Module</label>
+                  <select
+                    value={selectedClassroomModuleId}
+                    onChange={e => setSelectedClassroomModuleId(e.target.value)}
+                    disabled={!selectedClassroomGroupId}
+                    className={`w-full px-3 py-2.5 rounded-xl border text-xs outline-none transition-all font-semibold ${
+                      !selectedClassroomGroupId 
+                        ? 'bg-slate-100 border-slate-200 text-slate-405 cursor-not-allowed' 
+                        : 'bg-slate-50 border-slate-200 text-slate-700 focus:bg-white focus:border-indigo-500'
+                    }`}
+                  >
+                    {!selectedClassroomGroupId ? (
+                      <option value="">Sélectionnez d'abord un groupe</option>
+                    ) : filteredClassroomModules.length === 0 ? (
+                      <option value="">Aucune matière trouvée</option>
+                    ) : (
+                      <>
+                        <option value="">Choisir une matière...</option>
+                        {filteredClassroomModules.map(mod => (
+                          <option key={mod.id} value={mod.id}>
+                            {mod.name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: announcements, documents feed and announcement form */}
+            <div className="lg:col-span-3 space-y-6">
+              {!selectedClassroomModuleId ? (
+                <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center shadow-sm flex flex-col items-center justify-center min-h-[400px]">
+                  <Layers className="h-12 w-12 text-indigo-500/30 mb-4 animate-pulse" />
+                  <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-2">Sélectionnez une Matière</h3>
+                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+                    Veuillez sélectionner successivement une Filière, puis un Groupe et enfin une Matière dans le panneau de gauche pour accéder à l'espace de cours.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Form to publish a new announcement */}
+                  <form onSubmit={handlePublishAnnouncement} className="bg-white rounded-2xl border border-slate-200/85 p-6 shadow-sm shadow-slate-100/50 space-y-4">
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                      <Plus className="h-4 w-4 text-indigo-500" /> Publier un support de cours / annonce
+                    </h3>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Titre de l'annonce</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: Chapitre 3 : Architecture REST & Routage"
+                          value={announcementForm.title}
+                          onChange={e => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 transition-all"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Description / Contenu textuel</label>
+                        <textarea
+                          rows="3"
+                          placeholder="Saisissez les détails de l'annonce ou la description du document..."
+                          value={announcementForm.content}
+                          onChange={e => setAnnouncementForm({ ...announcementForm, content: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 resize-none transition-all"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Fichier joint (PDF, PPTX, ZIP, Images - Max 5Mo)</label>
+                        <div className="relative border border-dashed border-slate-300 hover:border-indigo-500 rounded-xl bg-slate-50 hover:bg-slate-100/50 p-6 transition-colors cursor-pointer flex flex-col items-center justify-center">
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={e => setAttachedFile(e.target.files[0])}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            accept=".pdf,.png,.jpg,.jpeg,.pptx,.ppt,.zip"
+                          />
+                          <Paperclip className="h-5 w-5 text-slate-400 mb-2" />
+                          <span className="text-[10px] font-bold text-slate-500 text-center">
+                            {attachedFile ? attachedFile.name : "Cliquez ou glissez un fichier ici pour le joindre"}
+                          </span>
+                          {attachedFile && (
+                            <span className="text-[9px] font-extrabold text-indigo-600 mt-1.5 uppercase tracking-wider">
+                              {(attachedFile.size / 1024 / 1024).toFixed(2)} Mo
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+                      >
+                        Publier l'Annonce
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Announcements Feed list */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Fil d'actualité & Supports</h3>
+                    
+                    {isAnnouncementsLoading ? (
+                      <div className="space-y-4">
+                        {[1, 2].map(n => (
+                          <div key={n} className="animate-pulse bg-white border border-slate-200/80 rounded-2xl p-5 space-y-3 shadow-sm">
+                            <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                            <div className="h-3 bg-slate-200 rounded w-full"></div>
+                            <div className="h-3 bg-slate-200 rounded w-2/3"></div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : classroomAnnouncements.length === 0 ? (
+                      <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-500 text-xs italic shadow-sm shadow-slate-100/50">
+                        Aucune annonce ou support de cours publié pour ce module.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {classroomAnnouncements.map(ann => (
+                          <div key={ann.id} className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm shadow-slate-100/50">
+                            <div className="flex justify-between items-start gap-4 mb-3">
+                              <h4 className="text-xs font-extrabold text-indigo-950 uppercase tracking-wide leading-snug">{ann.title}</h4>
+                              <span className="text-[10px] text-slate-450 font-bold whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded">
+                                {new Date(ann.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-slate-650 text-xs leading-relaxed whitespace-pre-line">{ann.content}</p>
+                            {renderFileAttachment(ann.file_path)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
       </main>
