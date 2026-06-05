@@ -35,10 +35,27 @@ class ClassroomController extends Controller
     /**
      * Liste des annonces d'un module avec leurs commentaires.
      */
-    public function index($moduleId)
+    public function index(Request $request, $moduleId)
     {
-        $announcements = Announcement::where('module_id', $moduleId)
-            ->with(['professor', 'comments.user'])
+        $user = $request->user();
+        $query = Announcement::where('module_id', $moduleId);
+
+        if ($user->role === 'student') {
+            $groupId = $user->group_id;
+            if ($groupId) {
+                $query->where(function($q) use ($groupId) {
+                    $q->where('group_id', $groupId)
+                      ->orWhereNull('group_id');
+                });
+            }
+        } elseif ($user->role === 'professor') {
+            if ($request->has('group_id')) {
+                $groupId = $request->query('group_id');
+                $query->where('group_id', $groupId);
+            }
+        }
+
+        $announcements = $query->with(['professor', 'comments.user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -56,6 +73,7 @@ class ClassroomController extends Controller
 
         $request->validate([
             'module_id' => 'required|exists:modules,id',
+            'group_id' => 'nullable|exists:groups,id',
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'file' => 'nullable|file|mimes:pdf,docx,pptx,zip,jpg,png|max:5120',
@@ -71,6 +89,7 @@ class ClassroomController extends Controller
 
         $announcement = Announcement::create([
             'module_id' => $request->module_id,
+            'group_id' => $request->group_id,
             'professor_id' => $request->user()->id,
             'title' => $request->title,
             'content' => $request->input('content'),
@@ -96,10 +115,15 @@ class ClassroomController extends Controller
         }
 
         $request->validate([
+            'group_id' => 'nullable|exists:groups,id',
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'file' => 'nullable|file|mimes:pdf,docx,pptx,zip,jpg,png|max:5120',
         ]);
+
+        if ($request->has('group_id')) {
+            $announcement->group_id = $request->group_id;
+        }
 
         $announcement->title = $request->title;
         $announcement->content = $request->input('content');

@@ -11,11 +11,16 @@ class Announcement extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['module_id', 'professor_id', 'title', 'content', 'file_path', 'file_name'];
+    protected $fillable = ['module_id', 'group_id', 'professor_id', 'title', 'content', 'file_path', 'file_name'];
 
     public function module(): BelongsTo
     {
         return $this->belongsTo(Module::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class);
     }
 
     public function professor(): BelongsTo

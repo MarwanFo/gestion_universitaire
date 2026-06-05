@@ -382,6 +382,7 @@ class DatabaseSeeder extends Seeder
         // 9. Classroom (Announcements & Comments)
         $announce1 = Announcement::create([
             'module_id' => $moduleWeb->id,
+            'group_id' => $group3A->id,
             'professor_id' => $profBenjelloun->id,
             'title' => 'Mise en ligne du TP 2 - Intégration React & Sanctum',
             'content' => 'Bonjour à tous, les énoncés et fichiers de démarrage pour le TP 2 sont disponibles. Veuillez travailler la partie authentification JWT et rendre vos dépôts Git avant Lundi prochain.',
@@ -389,6 +390,7 @@ class DatabaseSeeder extends Seeder
 
         $announce2 = Announcement::create([
             'module_id' => $moduleWeb->id,
+            'group_id' => $group3A->id,
             'professor_id' => $profBenjelloun->id,
             'title' => 'Rappel : Projet de fin de module',
             'content' => "N'oubliez pas de finaliser vos spécifications techniques (Use Case, diagrammes de séquence) d'ici demain soir. Bon courage !",

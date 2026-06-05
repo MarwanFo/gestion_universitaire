@@ -339,7 +339,9 @@ export default function ProfessorDashboard() {
   const fetchClassroomAnnouncements = async (moduleId) => {
     try {
       setIsAnnouncementsLoading(true);
-      const res = await api.get(`/classroom/modules/${moduleId}`);
+      const res = await api.get(`/classroom/modules/${moduleId}`, {
+        params: { group_id: selectedClassroomGroupId }
+      });
       setClassroomAnnouncements(res.data);
     } catch (err) {
       console.warn("Could not load classroom announcements:", err);
@@ -360,6 +362,9 @@ export default function ProfessorDashboard() {
       const formData = new FormData();
       formData.append('title', announcementForm.title);
       formData.append('content', announcementForm.content);
+      if (selectedClassroomGroupId) {
+        formData.append('group_id', selectedClassroomGroupId);
+      }
       if (attachedFile) {
         formData.append('file', attachedFile);
       }
@@ -499,14 +504,14 @@ export default function ProfessorDashboard() {
     }
   }, [selectedClassroomGroupId, dbTimetables]);
 
-  // Fetch announcements when activeTab is classroom and module changes
+  // Fetch announcements when activeTab is classroom and module or group changes
   useEffect(() => {
     if (activeTab === 'classroom' && selectedClassroomModuleId) {
       fetchClassroomAnnouncements(selectedClassroomModuleId);
     } else if (activeTab === 'classroom' && !selectedClassroomModuleId) {
       setClassroomAnnouncements([]);
     }
-  }, [activeTab, selectedClassroomModuleId]);
+  }, [activeTab, selectedClassroomModuleId, selectedClassroomGroupId]);
 
   const logbookDisplaySlots = getDisplaySlots(dbTimetables);
 
