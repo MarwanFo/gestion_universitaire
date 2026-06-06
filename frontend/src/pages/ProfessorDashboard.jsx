@@ -148,6 +148,17 @@ export default function ProfessorDashboard() {
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const fileInputRef = useRef(null);
 
+  // 6. Administrative Document Requests State
+  const [docRequests, setDocRequests] = useState([]);
+  const [isDocsLoading, setIsDocsLoading] = useState(false);
+  const [docType, setDocType] = useState('attestation_travail');
+  const [missionForm, setMissionForm] = useState({
+    destination: '',
+    start_date: '',
+    end_date: '',
+    reason: ''
+  });
+
   // Nouveaux états de filtrage progressif pour l'Appel (Absences)
   const [filieres, setFilieres] = useState([]);
   const [selectedFiliereId, setSelectedFiliereId] = useState('');
@@ -440,6 +451,54 @@ export default function ProfessorDashboard() {
     }
     setTimeout(() => setNotification(''), 4000);
   };
+
+  const fetchDocRequests = async () => {
+    try {
+      setIsDocsLoading(true);
+      const res = await api.get('/documents');
+      setDocRequests(res.data);
+    } catch (err) {
+      console.warn("Could not load document requests:", err);
+    } finally {
+      setIsDocsLoading(false);
+    }
+  };
+
+  const handleRequestDocument = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        type: docType,
+        destination: docType === 'ordre_mission' ? missionForm.destination : null,
+        start_date: docType === 'ordre_mission' ? missionForm.start_date : null,
+        end_date: docType === 'ordre_mission' ? missionForm.end_date : null,
+        motif: docType === 'ordre_mission' ? missionForm.reason : null,
+        metadata: docType === 'ordre_mission' ? {
+          destination: missionForm.destination,
+          start_date: missionForm.start_date,
+          end_date: missionForm.end_date,
+          reason: missionForm.reason
+        } : null
+      };
+
+      await api.post('/documents', payload);
+      setNotification("Demande de document soumise avec succès !");
+      setMissionForm({ destination: '', start_date: '', end_date: '', reason: '' });
+      fetchDocRequests();
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Erreur lors de la soumission de la demande.";
+      setNotification("Erreur : " + errMsg);
+    }
+    setTimeout(() => setNotification(''), 4000);
+  };
+
+  // Fetch document requests when documents tab becomes active
+  useEffect(() => {
+    if (activeTab === 'documents') {
+      fetchDocRequests();
+    }
+  }, [activeTab]);
 
   // Initialize classroom filiere
   useEffect(() => {
@@ -911,6 +970,18 @@ export default function ProfessorDashboard() {
             >
               <Layers className="h-4 w-4" />
               Espace Cours (Classroom)
+            </button>
+
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'documents' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/80 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-550 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+              Demandes Documents
             </button>
           </nav>
         </div>
@@ -1714,6 +1785,202 @@ export default function ProfessorDashboard() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 6: Demandes de Documents */}
+        {activeTab === 'documents' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fadeIn">
+            {/* Left side: Form */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm shadow-slate-100/50">
+                <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-indigo-500" />
+                  Nouvelle demande
+                </h2>
+                <p className="text-slate-550 text-xs mb-6">
+                  Choisissez le document requis. Les ordres de mission nécessitent des informations supplémentaires.
+                </p>
+
+                <form onSubmit={handleRequestDocument} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Type de document
+                    </label>
+                    <select
+                      value={docType}
+                      onChange={(e) => setDocType(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium focus:bg-white focus:border-indigo-500 outline-none"
+                    >
+                      <option value="attestation_travail">Attestation de Travail</option>
+                      <option value="ordre_mission">Ordre de Mission</option>
+                    </select>
+                  </div>
+
+                  {docType === 'ordre_mission' && (
+                    <div className="space-y-4 pt-2 border-t border-slate-100 animate-fadeIn">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          Destination
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex: Rabat, Université Mohammed V"
+                          value={missionForm.destination}
+                          onChange={(e) => setMissionForm({ ...missionForm, destination: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 placeholder-slate-400 focus:bg-white focus:border-indigo-500 outline-none"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Date de début
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            value={missionForm.start_date}
+                            onChange={(e) => setMissionForm({ ...missionForm, start_date: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Date de fin
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            value={missionForm.end_date}
+                            onChange={(e) => setMissionForm({ ...missionForm, end_date: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          Motif de la mission
+                        </label>
+                        <textarea
+                          required
+                          rows="3"
+                          placeholder="Décrivez brièvement le but de votre mission..."
+                          value={missionForm.reason}
+                          onChange={(e) => setMissionForm({ ...missionForm, reason: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 placeholder-slate-400 focus:bg-white focus:border-indigo-500 outline-none resize-none"
+                        ></textarea>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-md shadow-indigo-500/10 flex items-center justify-center gap-2"
+                  >
+                    Soumettre la demande
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Right side: History List */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm shadow-slate-100/50">
+                <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider mb-2">
+                  Historique des demandes
+                </h2>
+                <p className="text-slate-550 text-xs mb-6">
+                  Suivez le statut de validation et téléchargez vos attestations approuvées.
+                </p>
+
+                {isDocsLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map(n => (
+                      <div key={n} className="animate-pulse bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3">
+                        <div className="h-3.5 bg-slate-200 rounded w-1/3"></div>
+                        <div className="h-2.5 bg-slate-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : docRequests.length === 0 ? (
+                  <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-500 text-xs italic">
+                    Aucune demande de document enregistrée.
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+                    {docRequests.map(doc => {
+                      const displayTitle = doc.type === 'attestation_travail' ? 'Attestation de Travail' :
+                                           doc.type === 'ordre_mission' ? 'Ordre de Mission' : doc.type;
+                      const dateStr = doc.created_at ? new Date(doc.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Récemment';
+
+                      return (
+                        <div key={doc.id} className="border border-slate-150 rounded-xl p-4 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all duration-200">
+                          <div className="flex justify-between items-start gap-4 mb-2">
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-900">{displayTitle}</h4>
+                              <p className="text-[10px] text-slate-450 mt-0.5">Demandé le {dateStr}</p>
+                            </div>
+                            
+                            <div>
+                              {doc.status === 'pending' && (
+                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-50 border border-amber-100 text-amber-600">
+                                  En attente
+                                </span>
+                              )}
+                              {doc.status === 'approved' && (
+                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-50 border border-emerald-100 text-emerald-600">
+                                  Approuvée
+                                </span>
+                              )}
+                              {doc.status === 'rejected' && (
+                                <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-rose-50 border border-rose-100 text-rose-600">
+                                  Rejetée
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Extra details for Mission order */}
+                          {doc.type === 'ordre_mission' && (
+                            <div className="mt-3 p-2.5 bg-slate-100/60 rounded-lg text-[11px] text-slate-650 space-y-1 border border-slate-150">
+                              <div><span className="font-semibold text-slate-800">Destination :</span> {doc.destination}</div>
+                              <div><span className="font-semibold text-slate-800">Période :</span> du {doc.start_date} au {doc.end_date}</div>
+                              <div><span className="font-semibold text-slate-800">Motif :</span> {doc.motif}</div>
+                            </div>
+                          )}
+
+                          {/* Rejection reason if rejected */}
+                          {doc.status === 'rejected' && doc.rejection_reason && (
+                            <div className="mt-3 p-2.5 bg-rose-50/50 border border-rose-100 text-[11px] text-rose-600 rounded-lg">
+                              <span className="font-bold">Motif de refus :</span> {doc.rejection_reason}
+                            </div>
+                          )}
+
+                          {/* Download button if approved */}
+                          {doc.status === 'approved' && (
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                onClick={() => {
+                                  const url = `${api.defaults.baseURL || 'http://127.0.0.1:8000/api'}/admin/documents/${doc.id}/pdf?token=${localStorage.getItem('token')}`;
+                                  window.open(url, '_blank');
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 text-[10px] font-bold flex items-center gap-1.5 transition-all"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                                Télécharger le PDF
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

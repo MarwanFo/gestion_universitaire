@@ -41,9 +41,21 @@ class DocumentRequestController extends Controller
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date',
             'motif' => 'nullable|string',
+            'metadata' => 'nullable|array',
         ]);
 
         $extraData = $request->only(['destination', 'start_date', 'end_date', 'motif']);
+
+        if ($request->has('metadata')) {
+            $metadata = $request->input('metadata');
+            if (is_array($metadata)) {
+                if (isset($metadata['destination'])) $extraData['destination'] = $metadata['destination'];
+                if (isset($metadata['start_date'])) $extraData['start_date'] = $metadata['start_date'];
+                if (isset($metadata['end_date'])) $extraData['end_date'] = $metadata['end_date'];
+                if (isset($metadata['reason'])) $extraData['motif'] = $metadata['reason'];
+                if (isset($metadata['motif'])) $extraData['motif'] = $metadata['motif'];
+            }
+        }
 
         $docRequest = $this->docService->createRequest(
             $request->user()->id,
