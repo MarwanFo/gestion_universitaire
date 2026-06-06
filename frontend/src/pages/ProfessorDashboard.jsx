@@ -646,7 +646,7 @@ export default function ProfessorDashboard() {
     if (!filePath) return null;
     const fileName = filePath.split('/').pop();
     const info = getFileExtensionInfo(fileName);
-    const fileUrl = `${storageBaseUrl}/${filePath}`;
+    const fileUrl = filePath.startsWith('http') ? filePath : `${storageBaseUrl}/${filePath}`;
 
     return (
       <a
@@ -2013,7 +2013,7 @@ export default function ProfessorDashboard() {
                             <div className="mt-3 flex items-center gap-2 text-[11px] text-indigo-650 font-semibold bg-indigo-50/50 border border-indigo-100/50 rounded-lg px-2.5 py-1.5 w-fit">
                               <Paperclip className="h-3 w-3 text-indigo-500" />
                               <a
-                                href={`${api.defaults.baseURL?.replace('/api', '')}/storage/${doc.attachment_path}`}
+                                href={doc.attachment_path.startsWith('http') ? doc.attachment_path : `${api.defaults.baseURL?.replace('/api', '')}/storage/${doc.attachment_path}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="hover:underline truncate max-w-[200px]"

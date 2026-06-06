@@ -28,7 +28,7 @@ class AbsenceService
         
         $path = null;
         if ($file) {
-            $path = $file->store('justifications', 'public');
+            $path = \App\Helpers\UploadHelper::upload($file, 'justifications');
         }
 
         $absence->update([

@@ -113,8 +113,8 @@ class AdminUserController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar_path = '/storage/' . $path;
+            $path = \App\Helpers\UploadHelper::upload($request->file('avatar'), 'avatars');
+            $user->avatar_path = $path;
             $user->save();
         }
 
@@ -226,13 +226,13 @@ class AdminUserController extends Controller
         $user->update($userData);
 
         if ($request->hasFile('avatar')) {
-            // Delete old avatar if exists
-            if ($user->avatar_path) {
+            // Delete old avatar if exists locally
+            if ($user->avatar_path && !str_starts_with($user->avatar_path, 'http')) {
                 $oldPath = str_replace('/storage/', '', $user->avatar_path);
                 Storage::disk('public')->delete($oldPath);
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar_path = '/storage/' . $path;
+            $path = \App\Helpers\UploadHelper::upload($request->file('avatar'), 'avatars');
+            $user->avatar_path = $path;
             $user->save();
         }
 

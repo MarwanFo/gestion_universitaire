@@ -83,7 +83,7 @@ class ClassroomController extends Controller
         $fileName = null;
 
         if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('announcements', 'public');
+            $filePath = \App\Helpers\UploadHelper::upload($request->file('file'), 'announcements');
             $fileName = $request->file('file')->getClientOriginalName();
         }
 
@@ -129,7 +129,7 @@ class ClassroomController extends Controller
         $announcement->content = $request->input('content');
 
         if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('announcements', 'public');
+            $filePath = \App\Helpers\UploadHelper::upload($request->file('file'), 'announcements');
             $fileName = $request->file('file')->getClientOriginalName();
             $announcement->file_path = $filePath;
             $announcement->file_name = $fileName;

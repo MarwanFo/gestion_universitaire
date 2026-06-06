@@ -582,7 +582,7 @@ export default function AdminDashboard() {
     setRole(u.role);
     setIsActive(u.is_active ?? true);
     setAvatarFile(null);
-    setAvatarPreview(u.avatar_path ? `${api.defaults.baseURL.replace('/api', '')}${u.avatar_path}` : null);
+    setAvatarPreview(u.avatar_path ? (u.avatar_path.startsWith('http') ? u.avatar_path : `${api.defaults.baseURL.replace('/api', '')}${u.avatar_path}`) : null);
 
     if (u.role === 'student' && u.student_profile) {
       const sp = u.student_profile;
@@ -2193,7 +2193,7 @@ export default function AdminDashboard() {
                         <div className="h-8 w-8 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
                           {u.avatar_path ? (
                             <img 
-                              src={`${api.defaults.baseURL.replace('/api', '')}${u.avatar_path}`} 
+                              src={u.avatar_path.startsWith('http') ? u.avatar_path : `${api.defaults.baseURL.replace('/api', '')}${u.avatar_path}`} 
                               alt="Avatar" 
                               className="h-full w-full object-cover" 
                             />

@@ -59,7 +59,7 @@ class DocumentRequestController extends Controller
         }
 
         if ($request->hasFile('file')) {
-            $filePath = $request->file('file')->store('document_attachments', 'public');
+            $filePath = \App\Helpers\UploadHelper::upload($request->file('file'), 'document_attachments');
             $fileName = $request->file('file')->getClientOriginalName();
             $extraData['attachment_path'] = $filePath;
             $extraData['attachment_name'] = $fileName;
