@@ -270,6 +270,79 @@ export default function StudentDashboard() {
     window.open(url, '_blank');
   };
 
+  const handleCommentSubmit = async (e, announcementId) => {
+    e.preventDefault();
+    const commentText = commentInputs[announcementId]?.trim();
+    if (!commentText) return;
+
+    // Clear the input field immediately for crisp UX
+    setCommentInputs(prev => ({ ...prev, [announcementId]: '' }));
+
+    // Construct the optimistic comment object
+    const tempCommentId = Date.now();
+    const optimisticComment = {
+      id: tempCommentId,
+      content: commentText,
+      created_at: new Date().toISOString(),
+      user: {
+        id: user?.id,
+        first_name: user?.first_name || 'Moi',
+        last_name: user?.last_name || '',
+        role: user?.role || 'student'
+      }
+    };
+
+    // Apply the optimistic update to state
+    setAnnouncements(prevAnnouncements => 
+      prevAnnouncements.map(ann => {
+        if (ann.id === announcementId) {
+          return {
+            ...ann,
+            comments: [...(ann.comments || []), optimisticComment]
+          };
+        }
+        return ann;
+      })
+    );
+
+    try {
+      // Send the real request to the API
+      const res = await api.post(`/classroom/announcements/${announcementId}/comments`, {
+        content: commentText
+      });
+
+      // Update the temporary ID with the real database comment object
+      const savedComment = res.data.comment;
+      setAnnouncements(prevAnnouncements => 
+        prevAnnouncements.map(ann => {
+          if (ann.id === announcementId) {
+            return {
+              ...ann,
+              comments: (ann.comments || []).map(c => c.id === tempCommentId ? savedComment : c)
+            };
+          }
+          return ann;
+        })
+      );
+    } catch (err) {
+      console.error("Failed to post comment:", err);
+      // Rollback if request fails
+      setAnnouncements(prevAnnouncements => 
+        prevAnnouncements.map(ann => {
+          if (ann.id === announcementId) {
+            return {
+              ...ann,
+              comments: (ann.comments || []).filter(c => c.id !== tempCommentId)
+            };
+          }
+          return ann;
+        })
+      );
+      // Re-populate text so they don't lose their message
+      setCommentInputs(prev => ({ ...prev, [announcementId]: commentText }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex relative overflow-hidden">
       {/* Background Glows */}
@@ -784,6 +857,65 @@ export default function StudentDashboard() {
                               {renderFileAttachment(ann.file_path)}
                             </div>
                           )}
+
+                          {/* Section Commentaires */}
+                          <div className="pt-4 border-t border-slate-100 space-y-4">
+                            <div className="flex items-center gap-2 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                              <MessageSquare className="h-3.5 w-3.5" />
+                              <span>{ann.comments?.length || 0} Commentaire{(ann.comments?.length || 0) > 1 ? 's' : ''}</span>
+                            </div>
+
+                            {/* Fil des commentaires */}
+                            {ann.comments && ann.comments.length > 0 && (
+                              <div className="space-y-3.5 pl-3 border-l-2 border-slate-100 ml-2">
+                                {ann.comments.map(comment => (
+                                  <div key={comment.id} className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-slate-800">
+                                        {comment.user?.first_name} {comment.user?.last_name}
+                                      </span>
+                                      <span className={`px-1.5 py-0.25 rounded text-[8px] font-extrabold uppercase ${
+                                        comment.user?.role === 'professor' 
+                                          ? 'bg-indigo-50 border border-indigo-100 text-indigo-600' 
+                                          : 'bg-pink-50 border border-pink-100 text-pink-600'
+                                      }`}>
+                                        {comment.user?.role === 'professor' ? 'Enseignant' : 'Étudiant'}
+                                      </span>
+                                      <span className="text-[9px] text-slate-400 font-medium">
+                                        {comment.created_at ? new Date(comment.created_at).toLocaleDateString('fr-FR', {
+                                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                                        }) : 'À l\'instant'}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-slate-655 leading-relaxed pl-1">
+                                      {comment.content}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Saisie rapide de commentaire */}
+                            <form 
+                              onSubmit={(e) => handleCommentSubmit(e, ann.id)}
+                              className="flex items-center gap-2 mt-2"
+                            >
+                              <input
+                                type="text"
+                                value={commentInputs[ann.id] || ''}
+                                onChange={(e) => setCommentInputs({ ...commentInputs, [ann.id]: e.target.value })}
+                                placeholder="Écrire un commentaire..."
+                                className="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-500 transition-all"
+                              />
+                              <button
+                                type="submit"
+                                className="h-8 w-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition-all shadow-sm shadow-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!commentInputs[ann.id]?.trim()}
+                              >
+                                <Send className="h-3.5 w-3.5" />
+                              </button>
+                            </form>
+                          </div>
                         </div>
                       ))}
                     </div>
