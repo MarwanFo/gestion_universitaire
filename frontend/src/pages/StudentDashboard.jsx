@@ -9,7 +9,13 @@ import {
   LogOut, 
   Download, 
   AlertTriangle,
-  Award
+  Award,
+  Paperclip,
+  File,
+  FileArchive,
+  Image,
+  User,
+  MessageSquare
 } from 'lucide-react';
 
 export default function StudentDashboard() {
@@ -44,6 +50,13 @@ export default function StudentDashboard() {
 
   const [selectedDocType, setSelectedDocType] = useState('Attestation de scolarité');
   const [docNotification, setDocNotification] = useState('');
+
+  // 5. Classroom State
+  const [classroomModules, setClassroomModules] = useState([]);
+  const [selectedModule, setSelectedModule] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [classroomLoading, setClassroomLoading] = useState(false);
+  const [commentInputs, setCommentInputs] = useState({});
 
   // 4. Timetable State
   const [timetable, setTimetable] = useState([
@@ -108,6 +121,92 @@ export default function StudentDashboard() {
     };
     fetchStudentData();
   }, []);
+
+  const storageBaseUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api').replace('/api', '/storage');
+
+  const getFileExtensionInfo = (fileName) => {
+    if (!fileName) return { ext: 'FILE', color: 'text-slate-650 border-slate-200 bg-slate-50', iconColor: 'text-slate-500' };
+    const ext = fileName.split('.').pop().toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return { ext: 'PDF', color: 'text-rose-650 border-rose-100 bg-rose-50/50 hover:bg-rose-100/50', iconColor: 'text-rose-500' };
+      case 'docx':
+      case 'doc':
+        return { ext: 'Word', color: 'text-blue-650 border-blue-100 bg-blue-50/50 hover:bg-blue-100/50', iconColor: 'text-blue-500' };
+      case 'pptx':
+      case 'ppt':
+        return { ext: 'PPTX', color: 'text-orange-650 border-orange-100 bg-orange-50/50 hover:bg-orange-100/50', iconColor: 'text-orange-500' };
+      case 'zip':
+      case 'rar':
+        return { ext: 'ZIP', color: 'text-amber-650 border-amber-100 bg-amber-50/50 hover:bg-amber-100/50', iconColor: 'text-amber-500' };
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return { ext: 'Image', color: 'text-emerald-650 border-emerald-100 bg-emerald-50/50 hover:bg-emerald-100/50', iconColor: 'text-emerald-500' };
+      default:
+        return { ext: ext.toUpperCase(), color: 'text-indigo-650 border-indigo-100 bg-indigo-50/50 hover:bg-indigo-100/50', iconColor: 'text-indigo-500' };
+    }
+  };
+
+  const renderFileAttachment = (filePath) => {
+    if (!filePath) return null;
+    const fileName = filePath.split('/').pop();
+    const info = getFileExtensionInfo(fileName);
+    const fileUrl = filePath.startsWith('http') ? filePath : `${storageBaseUrl}/${filePath}`;
+
+    return (
+      <a
+        href={fileUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`inline-flex items-center gap-2 px-3.5 py-2 border rounded-xl text-xs font-bold transition-all ${info.color} mt-3 shadow-sm`}
+      >
+        <Download className={`h-3.5 w-3.5 ${info.iconColor}`} />
+        <span className="truncate max-w-[200px]">{fileName}</span>
+        <span className="text-[9px] font-extrabold opacity-60 uppercase">
+          [{info.ext}]
+        </span>
+      </a>
+    );
+  };
+
+  // Fetch classroom modules when the tab becomes active
+  useEffect(() => {
+    const fetchClassroomModules = async () => {
+      if (activeTab !== 'classroom') return;
+      try {
+        setClassroomLoading(true);
+        const res = await api.get('/classroom/modules');
+        setClassroomModules(res.data);
+        if (res.data.length > 0 && !selectedModule) {
+          setSelectedModule(res.data[0]);
+        }
+      } catch (err) {
+        console.error("Error fetching classroom modules:", err);
+      } finally {
+        setClassroomLoading(false);
+      }
+    };
+    fetchClassroomModules();
+  }, [activeTab]);
+
+  // Fetch announcements when a module is selected
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      if (!selectedModule) return;
+      try {
+        setClassroomLoading(true);
+        const res = await api.get(`/classroom/modules/${selectedModule.id}`);
+        setAnnouncements(res.data);
+      } catch (err) {
+        console.error("Error fetching announcements:", err);
+      } finally {
+        setClassroomLoading(false);
+      }
+    };
+    fetchAnnouncements();
+  }, [selectedModule]);
 
   const handleJustificationSubmit = async (e) => {
     e.preventDefault();
@@ -201,6 +300,18 @@ export default function StudentDashboard() {
             >
               <Award className="h-4 w-4" />
               Mes Notes
+            </button>
+
+            <button
+              onClick={() => setActiveTab('classroom')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'classroom' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/80 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-550 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <BookOpen className="h-4 w-4" />
+              Espace Classroom
             </button>
 
             <button
@@ -527,6 +638,162 @@ export default function StudentDashboard() {
                   Transmettre la demande
                 </button>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 5: Espace Classroom */}
+        {activeTab === 'classroom' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fadeIn items-start">
+            {/* Left Sidebar: Modules list */}
+            <div className="lg:col-span-4 space-y-4">
+              <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm backdrop-blur-xl">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Mes Matières</h3>
+                {classroomModules.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs italic">
+                    Aucun module disponible.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
+                    {classroomModules.map(mod => {
+                      const isSelected = selectedModule?.id === mod.id;
+                      return (
+                        <button
+                          key={mod.id}
+                          onClick={() => setSelectedModule(mod)}
+                          className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex flex-col gap-1.5 ${
+                            isSelected
+                              ? 'bg-indigo-50/70 border-indigo-200 shadow-sm shadow-indigo-500/5'
+                              : 'bg-white border-slate-200/70 hover:bg-slate-50/80 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center w-full">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide ${
+                              isSelected ? 'bg-indigo-150 text-indigo-700' : 'bg-slate-100 text-slate-650'
+                            }`}>
+                              {mod.code}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">Semestre {mod.semester}</span>
+                          </div>
+                          <span className={`text-xs font-bold truncate leading-tight ${
+                            isSelected ? 'text-indigo-950' : 'text-slate-800'
+                          }`}>
+                            {mod.name}
+                          </span>
+                          <span className="text-[10px] text-slate-450 truncate">
+                            Prof. {mod.professor_name || 'Enseignant'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Announcements stream */}
+            <div className="lg:col-span-8 space-y-6">
+              {selectedModule ? (
+                <>
+                  {/* Module Header Card */}
+                  <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-100/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm shadow-indigo-500/5">
+                    <div>
+                      <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest">Espace d'échange</span>
+                      <h2 className="text-lg font-bold text-slate-900 mt-0.5">{selectedModule.name}</h2>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Professeur : <span className="font-semibold text-slate-700">{selectedModule.professor_name || 'Non assigné'}</span>
+                      </p>
+                    </div>
+                    <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] text-slate-600 font-bold uppercase tracking-wider shadow-sm">
+                      {selectedModule.code}
+                    </div>
+                  </div>
+
+                  {/* Flux Content */}
+                  {classroomLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2].map(i => (
+                        <div key={i} className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm animate-pulse space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-200" />
+                            <div className="space-y-2">
+                              <div className="h-3 bg-slate-200 rounded w-28" />
+                              <div className="h-2.5 bg-slate-200 rounded w-16" />
+                            </div>
+                          </div>
+                          <div className="space-y-1.5 pt-2">
+                            <div className="h-3 bg-slate-200 rounded w-full" />
+                            <div className="h-3 bg-slate-200 rounded w-5/6" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : announcements.length === 0 ? (
+                    <div className="p-10 rounded-2xl bg-white border border-slate-200/80 shadow-sm text-center max-w-xl mx-auto space-y-3">
+                      <BookOpen className="h-8 w-8 text-slate-300 mx-auto" />
+                      <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Aucune publication</h3>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Votre enseignant n'a publié aucune annonce ou document de cours pour le moment.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {announcements.map(ann => (
+                        <div key={ann.id} className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl space-y-4">
+                          {/* En-tête */}
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
+                                {ann.professor?.first_name ? ann.professor.first_name[0] : <User className="h-4 w-4" />}
+                              </div>
+                              <div>
+                                <span className="block text-xs font-bold text-slate-800">
+                                  {ann.professor?.first_name} {ann.professor?.last_name}
+                                </span>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100/80 text-indigo-600 text-[8px] font-extrabold uppercase">
+                                    Enseignant
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 font-semibold">
+                                    {new Date(ann.created_at).toLocaleDateString('fr-FR', {
+                                      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                                    })}
+                                  </span>
+                                  {ann.created_at !== ann.updated_at && (
+                                    <span className="text-[9px] text-indigo-550 font-bold bg-indigo-50/30 px-1 py-0.5 rounded">
+                                      Modifié
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Contenu */}
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-bold text-slate-900">{ann.title}</h4>
+                            <p className="text-xs text-slate-605 leading-relaxed whitespace-pre-line">
+                              {ann.content}
+                            </p>
+                          </div>
+
+                          {/* Pièce jointe */}
+                          {ann.file_path && (
+                            <div className="pt-2 border-t border-slate-100">
+                              <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Support joint</span>
+                              {renderFileAttachment(ann.file_path)}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="p-12 text-center text-slate-400 text-xs italic bg-white border border-slate-200/85 rounded-2xl">
+                  Sélectionnez un module à gauche pour afficher le flux de cours.
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -18,8 +18,11 @@ class ClassroomController extends Controller
         $user = $request->user();
         if ($user->role === 'student') {
             // Modules liés à la filière du groupe de l'étudiant
-            if ($user->group) {
-                $modules = Module::where('field_id', $user->group->field_id)->get();
+            $fieldId = $user->group ? $user->group->field_id : ($user->studentProfile ? $user->studentProfile->field_id : null);
+            if ($fieldId) {
+                $modules = Module::whereHas('fields', function($q) use ($fieldId) {
+                    $q->where('fields.id', $fieldId);
+                })->get();
             } else {
                 $modules = Module::all();
             }
@@ -55,9 +58,15 @@ class ClassroomController extends Controller
             }
         }
 
-        $announcements = $query->with(['professor', 'comments.user'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $announcements = $query->with([
+            'professor',
+            'comments' => function($q) {
+                $q->orderBy('created_at', 'asc');
+            },
+            'comments.user'
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
         return response()->json($announcements);
     }
