@@ -158,6 +158,8 @@ export default function ProfessorDashboard() {
     end_date: '',
     reason: ''
   });
+  const [docAttachedFile, setDocAttachedFile] = useState(null);
+  const docFileInputRef = useRef(null);
 
   // Nouveaux états de filtrage progressif pour l'Appel (Absences)
   const [filieres, setFilieres] = useState([]);
@@ -467,23 +469,37 @@ export default function ProfessorDashboard() {
   const handleRequestDocument = async (e) => {
     e.preventDefault();
     try {
-      const payload = {
-        type: docType,
-        destination: docType === 'ordre_mission' ? missionForm.destination : null,
-        start_date: docType === 'ordre_mission' ? missionForm.start_date : null,
-        end_date: docType === 'ordre_mission' ? missionForm.end_date : null,
-        motif: docType === 'ordre_mission' ? missionForm.reason : null,
-        metadata: docType === 'ordre_mission' ? {
-          destination: missionForm.destination,
-          start_date: missionForm.start_date,
-          end_date: missionForm.end_date,
-          reason: missionForm.reason
-        } : null
-      };
+      const formData = new FormData();
+      formData.append('type', docType);
 
-      await api.post('/documents', payload);
+      if (docType === 'ordre_mission') {
+        formData.append('destination', missionForm.destination);
+        formData.append('start_date', missionForm.start_date);
+        formData.append('end_date', missionForm.end_date);
+        formData.append('motif', missionForm.reason);
+
+        formData.append('metadata[destination]', missionForm.destination);
+        formData.append('metadata[start_date]', missionForm.start_date);
+        formData.append('metadata[end_date]', missionForm.end_date);
+        formData.append('metadata[reason]', missionForm.reason);
+      }
+
+      if (docAttachedFile) {
+        formData.append('file', docAttachedFile);
+      }
+
+      await api.post('/documents', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
       setNotification("Demande de document soumise avec succès !");
       setMissionForm({ destination: '', start_date: '', end_date: '', reason: '' });
+      setDocAttachedFile(null);
+      if (docFileInputRef.current) {
+        docFileInputRef.current.value = '';
+      }
       fetchDocRequests();
     } catch (err) {
       console.error(err);
@@ -1877,6 +1893,45 @@ export default function ProfessorDashboard() {
                     </div>
                   )}
 
+                  {/* File Attachment Input */}
+                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                      Pièce jointe (PDF, Image - Optionnel)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-350 cursor-pointer transition-all duration-200">
+                        <Paperclip className="h-3.5 w-3.5 text-slate-500" />
+                        <span className="text-[11px] text-slate-650 font-medium truncate">
+                          {docAttachedFile ? docAttachedFile.name : "Sélectionner un fichier"}
+                        </span>
+                        <input
+                          type="file"
+                          ref={docFileInputRef}
+                          accept=".pdf,image/*"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setDocAttachedFile(e.target.files[0]);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      {docAttachedFile && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDocAttachedFile(null);
+                            if (docFileInputRef.current) docFileInputRef.current.value = '';
+                          }}
+                          className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition-all"
+                          title="Supprimer le fichier"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
                     className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-md shadow-indigo-500/10 flex items-center justify-center gap-2"
@@ -1950,6 +2005,22 @@ export default function ProfessorDashboard() {
                               <div><span className="font-semibold text-slate-800">Destination :</span> {doc.destination}</div>
                               <div><span className="font-semibold text-slate-800">Période :</span> du {doc.start_date} au {doc.end_date}</div>
                               <div><span className="font-semibold text-slate-800">Motif :</span> {doc.motif}</div>
+                            </div>
+                          )}
+
+                          {/* User uploaded attachment if present */}
+                          {doc.attachment_path && (
+                            <div className="mt-3 flex items-center gap-2 text-[11px] text-indigo-650 font-semibold bg-indigo-50/50 border border-indigo-100/50 rounded-lg px-2.5 py-1.5 w-fit">
+                              <Paperclip className="h-3 w-3 text-indigo-500" />
+                              <a
+                                href={`${api.defaults.baseURL?.replace('/api', '')}/storage/${doc.attachment_path}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline truncate max-w-[200px]"
+                                title="Ouvrir la pièce jointe"
+                              >
+                                {doc.attachment_name || "Pièce jointe"}
+                              </a>
                             </div>
                           )}
 

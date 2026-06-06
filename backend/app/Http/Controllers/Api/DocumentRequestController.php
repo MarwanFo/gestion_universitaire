@@ -42,6 +42,7 @@ class DocumentRequestController extends Controller
             'end_date' => 'nullable|date',
             'motif' => 'nullable|string',
             'metadata' => 'nullable|array',
+            'file' => 'nullable|file|mimes:pdf,jpg,png,jpeg|max:5120',
         ]);
 
         $extraData = $request->only(['destination', 'start_date', 'end_date', 'motif']);
@@ -55,6 +56,13 @@ class DocumentRequestController extends Controller
                 if (isset($metadata['reason'])) $extraData['motif'] = $metadata['reason'];
                 if (isset($metadata['motif'])) $extraData['motif'] = $metadata['motif'];
             }
+        }
+
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('document_attachments', 'public');
+            $fileName = $request->file('file')->getClientOriginalName();
+            $extraData['attachment_path'] = $filePath;
+            $extraData['attachment_name'] = $fileName;
         }
 
         $docRequest = $this->docService->createRequest(

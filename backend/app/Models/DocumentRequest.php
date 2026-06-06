@@ -19,7 +19,9 @@ class DocumentRequest extends Model
         'start_date',
         'end_date',
         'motif',
-        'pdf_path'
+        'pdf_path',
+        'attachment_path',
+        'attachment_name'
     ];
 
     public function user(): BelongsTo
