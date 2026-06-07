@@ -40,14 +40,11 @@ class AbsenceService
         return $absence;
     }
 
-    /**
-     * Enregistre la feuille d'appel pour une séance d'un groupe à une date donnée.
-     */
     public function saveAttendanceSheet(int $timetableId, string $date, array $sheet, int $sessionPart = 1): void
     {
         foreach ($sheet as $studentId => $isAbsent) {
             if ($isAbsent) {
-                Absence::updateOrCreate(
+                $absence = Absence::updateOrCreate(
                     [
                         'student_id' => $studentId,
                         'timetable_id' => $timetableId,
@@ -59,6 +56,18 @@ class AbsenceService
                         'justification_status' => 'none',
                     ]
                 );
+
+                if ($absence->wasRecentlyCreated) {
+                    try {
+                        $student = User::find($studentId);
+                        if ($student && $student->email) {
+                            $absence->load(['timetable.module.professor', 'student']);
+                            \Illuminate\Support\Facades\Mail::to($student->email)->send(new \App\Mail\AbsenceAlertMail($absence));
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::warning("Failed to send absence alert email to student {$studentId}: " . $e->getMessage());
+                    }
+                }
             } else {
                 Absence::where([
                     'student_id' => $studentId,

@@ -140,6 +140,17 @@ class ReservationController extends Controller
 
         $reservation->update($validated);
 
+        if (isset($validated['status']) && $validated['status'] === 'approved') {
+            try {
+                $professor = $reservation->professor;
+                if ($professor && $professor->email) {
+                    \Illuminate\Support\Facades\Mail::to($professor->email)->send(new \App\Mail\ReservationConfirmedMail($reservation->load('room')));
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Failed to send reservation confirmation email: " . $e->getMessage());
+            }
+        }
+
         return response()->json([
             'message' => 'Réservation mise à jour avec succès.',
             'reservation' => $reservation->load(['room', 'professor'])

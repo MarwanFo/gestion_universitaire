@@ -97,6 +97,9 @@ class DocumentRequestController extends Controller
                     'success',
                     '/documents'
                 ));
+                if ($user->email) {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\DocumentRequestStatusMail($docRequest));
+                }
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("Failed to notify user for approved doc: " . $e->getMessage());
@@ -132,6 +135,9 @@ class DocumentRequestController extends Controller
                     'warning',
                     '/documents'
                 ));
+                if ($user->email) {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\DocumentRequestStatusMail($docRequest));
+                }
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("Failed to notify user for rejected doc: " . $e->getMessage());
