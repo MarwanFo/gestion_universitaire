@@ -1,0 +1,60 @@
+{
+  "translation": {
+    "login": {
+      "title": "Portail Académique UPF",
+      "subtitle": "Accédez à votre espace sécurisé",
+      "email": "Adresse E-mail",
+      "password": "Mot de passe",
+      "button": "Se connecter",
+      "error": "Identifiants incorrects"
+    },
+    "nav": {
+      "overview": "Vue d'ensemble",
+      "users": "Utilisateurs",
+      "fields": "Filières",
+      "modules": "Matières",
+      "groups": "Classes / Groupes",
+      "saved_timetables": "Gestion des Emplois",
+      "timetable_planner": "Planificateur IA",
+      "grades_mgmt": "Saisie des Notes",
+      "absences_mgmt": "Suivi des Absences",
+      "logbooks": "Cahiers de Textes",
+      "grades": "Saisie des Notes",
+      "my_grades": "Mes Notes",
+      "attendance": "Appel & Absences",
+      "my_absences": "Mes Absences",
+      "rooms": "Réservation Salles",
+      "logbook": "Cahier de Textes",
+      "timetable": "Emploi du Temps",
+      "classroom": "Espace Cours (Classroom)",
+      "documents": "Demandes Documents",
+      "my_documents": "Mes Documents",
+      "stats": "Statistiques",
+      "logout": "Déconnexion"
+    },
+    "dashboard": {
+      "student_title": "Espace Étudiant",
+      "student_subtitle": "Consultez vos résultats et gérez votre scolarité",
+      "prof_title": "Espace Enseignant",
+      "prof_subtitle": "Gérez vos modules et encadrez vos étudiants",
+      "admin_title": "Espace Administration",
+      "admin_subtitle": "Supervisez l'établissement en temps réel",
+      "role_student": "Étudiant",
+      "role_professor": "Professeur",
+      "role_admin": "Administrateur"
+    },
+    "common": {
+      "export_pdf": "Exporter en PDF",
+      "download_csv": "Télécharger la feuille d'appel (CSV)",
+      "save": "Enregistrer",
+      "validate": "Valider",
+      "status": "Statut",
+      "average": "Moyenne",
+      "filiere": "Filière",
+      "group": "Groupe",
+      "module": "Module",
+      "date": "Date",
+      "action": "Action"
+    }
+  }
+}

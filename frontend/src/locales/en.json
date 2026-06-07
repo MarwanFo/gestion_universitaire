@@ -1,0 +1,60 @@
+{
+  "translation": {
+    "login": {
+      "title": "UPF Academic Portal",
+      "subtitle": "Access your secure workspace",
+      "email": "Email Address",
+      "password": "Password",
+      "button": "Sign In",
+      "error": "Invalid credentials"
+    },
+    "nav": {
+      "overview": "Overview",
+      "users": "Users",
+      "fields": "Majors",
+      "modules": "Courses",
+      "groups": "Classes & Groups",
+      "saved_timetables": "Timetable Management",
+      "timetable_planner": "AI Planner",
+      "grades_mgmt": "Grades Management",
+      "absences_mgmt": "Attendance Tracking",
+      "logbooks": "Course Logbooks",
+      "grades": "Grade Entry",
+      "my_grades": "My Grades",
+      "attendance": "Attendance & Absences",
+      "my_absences": "My Absences",
+      "rooms": "Room Reservation",
+      "logbook": "Course Logbook",
+      "timetable": "Timetable",
+      "classroom": "Classroom Space",
+      "documents": "Document Requests",
+      "my_documents": "My Documents",
+      "stats": "Statistics",
+      "logout": "Log Out"
+    },
+    "dashboard": {
+      "student_title": "Student Space",
+      "student_subtitle": "Check your results and manage your education",
+      "prof_title": "Professor Space",
+      "prof_subtitle": "Manage your modules and supervise your students",
+      "admin_title": "Administration Space",
+      "admin_subtitle": "Supervise the institution in real time",
+      "role_student": "Student",
+      "role_professor": "Professor",
+      "role_admin": "Administrator"
+    },
+    "common": {
+      "export_pdf": "Export to PDF",
+      "download_csv": "Download Attendance (CSV)",
+      "save": "Save",
+      "validate": "Validate",
+      "status": "Status",
+      "average": "Average",
+      "filiere": "Major",
+      "group": "Group",
+      "module": "Module",
+      "date": "Date",
+      "action": "Action"
+    }
+  }
+}

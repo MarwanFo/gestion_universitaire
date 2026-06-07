@@ -88,6 +88,20 @@ class DocumentRequestController extends Controller
 
         $docRequest = $this->docService->approveRequest($id);
 
+        try {
+            $user = $docRequest->user;
+            if ($user) {
+                $user->notify(new \App\Notifications\SystemNotification(
+                    "Demande de document approuvée",
+                    "Votre demande pour le document '" . $docRequest->type . "' a été approuvée.",
+                    'success',
+                    '/documents'
+                ));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to notify user for approved doc: " . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Demande approuvée.',
             'request' => $docRequest
@@ -108,6 +122,20 @@ class DocumentRequestController extends Controller
         ]);
 
         $docRequest = $this->docService->rejectRequest($id, $request->reason);
+
+        try {
+            $user = $docRequest->user;
+            if ($user) {
+                $user->notify(new \App\Notifications\SystemNotification(
+                    "Demande de document rejetée",
+                    "Votre demande pour le document '" . $docRequest->type . "' a été rejetée. Motif : " . $request->reason,
+                    'warning',
+                    '/documents'
+                ));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to notify user for rejected doc: " . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Demande rejetée.',

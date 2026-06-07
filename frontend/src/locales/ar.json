@@ -1,0 +1,60 @@
+{
+  "translation": {
+    "login": {
+      "title": "البوابة الأكاديمية لجامعة فاس الخاصة",
+      "subtitle": "الولوج إلى فضاءكم الآمن",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "button": "تسجيل الدخول",
+      "error": "بيانات الاتصال غير صحيحة"
+    },
+    "nav": {
+      "overview": "نظرة عامة",
+      "users": "المستخدمين",
+      "fields": "الشعب",
+      "modules": "المواد",
+      "groups": "الأقسام / المجموعات",
+      "saved_timetables": "تدبير الحصص",
+      "timetable_planner": "المخطط الذكي",
+      "grades_mgmt": "تدبير النقط",
+      "absences_mgmt": "متابعة الغيابات",
+      "logbooks": "دفاتر النصوص",
+      "grades": "رصد النقط",
+      "my_grades": "نقطي",
+      "attendance": "النداء والغياب",
+      "my_absences": "غياباتي",
+      "rooms": "حجز القاعات",
+      "logbook": "دفتر النصوص",
+      "timetable": "جدول الحصص",
+      "classroom": "المساحة التعليمية (Classroom)",
+      "documents": "طلب الوثائق",
+      "my_documents": "وثائقي",
+      "stats": "الإحصائيات",
+      "logout": "تسجيل الخروج"
+    },
+    "dashboard": {
+      "student_title": "فضاء الطالب",
+      "student_subtitle": "اطلع على نتائجك وتتبع مسارك الدراسي",
+      "prof_title": "فضاء الأستاذ",
+      "prof_subtitle": "تدبير المواد الدراسية وتتبع الطلبة",
+      "admin_title": "فضاء الإدارة",
+      "admin_subtitle": "الإشراف وتسيير المؤسسة في الوقت الفعلي",
+      "role_student": "طالب",
+      "role_professor": "أستاذ",
+      "role_admin": "مدير"
+    },
+    "common": {
+      "export_pdf": "تصدير إلى PDF",
+      "download_csv": "تحميل ورقة الغياب (CSV)",
+      "save": "حفظ",
+      "validate": "تأكيد",
+      "status": "الحالة",
+      "average": "المعدل",
+      "filiere": "الشعبة",
+      "group": "المجموعة",
+      "module": "المادة",
+      "date": "التاريخ",
+      "action": "الإجراء"
+    }
+  }
+}

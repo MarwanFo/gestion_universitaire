@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import NotificationDropdown from '../components/NotificationDropdown';
+import LanguageDropdown from '../components/LanguageDropdown';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Cell } from 'recharts';
 import { 
   Users as UsersIcon, 
   GraduationCap, 
@@ -28,13 +32,23 @@ import {
   Award,
   Layers,
   GitBranch,
-  ArrowRight
+  ArrowRight,
+  BarChart3 as BarChartIcon
 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, []);
 
   const getFileUrl = (path) => {
     if (!path) return '';
@@ -57,6 +71,8 @@ export default function AdminDashboard() {
     { day: 'Vendredi', slots: [] }
   ]);
   const [stats, setStats] = useState({ total_students: 0, total_professors: 0, pending_requests: 0 });
+  const [detailedStats, setDetailedStats] = useState(null);
+  const [loadingDetailedStats, setLoadingDetailedStats] = useState(true);
 
   // Dropdowns lists from DB
   const [dbFields, setDbFields] = useState([]);
@@ -481,12 +497,25 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchDetailedStats = async () => {
+    setLoadingDetailedStats(true);
+    try {
+      const res = await api.get('/stats/admin');
+      setDetailedStats(res.data);
+    } catch (e) {
+      console.warn("Failed to fetch detailed stats", e);
+    } finally {
+      setLoadingDetailedStats(false);
+    }
+  };
+
   // Fetch PostgreSQL records
   useEffect(() => {
     const fetchData = async () => {
       const promises = [
         api.get('/admin/users').then(res => setUsers(res.data)).catch(e => console.warn("Failed to fetch admin users", e)),
         api.get('/admin/stats').then(res => setStats(res.data)).catch(e => console.warn("Failed to fetch admin stats", e)),
+        api.get('/stats/admin').then(res => setDetailedStats(res.data)).catch(e => console.warn("Failed to fetch detailed stats", e)),
         api.get('/documents').then(res => {
           setDocumentRequests(res.data.map(doc => {
             let docTypeDisplay = doc.type;
@@ -1503,15 +1532,27 @@ export default function AdminDashboard() {
               <BookOpen className="h-4 w-4" />
               Cahiers de Textes
             </button>
+
+            <button
+              onClick={() => { setActiveTab('stats'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'stats' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <BarChartIcon className="h-4 w-4" />
+              {t('nav.stats')}
+            </button>
           </nav>
         </div>
 
         <button 
           onClick={logout}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-50 text-slate-550 hover:text-rose-600 text-xs font-bold uppercase tracking-wider transition-all duration-200 mt-auto border border-transparent hover:border-rose-200/50"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-50 text-slate-555 hover:text-rose-600 text-xs font-bold uppercase tracking-wider transition-all duration-200 mt-auto border border-transparent hover:border-rose-200/50"
         >
           <LogOut className="h-4 w-4" />
-          Déconnexion
+          {t('nav.logout')}
         </button>
       </aside>
 
@@ -1519,12 +1560,14 @@ export default function AdminDashboard() {
       <main className="flex-1 p-4 md:p-8 overflow-y-auto relative z-10">
         <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-200/80">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Espace Administration</h1>
-            <p className="text-slate-550 text-xs mt-1">Gérez le portail UPF et suivez les activités</p>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard.admin_title')}</h1>
+            <p className="text-slate-555 text-xs mt-1">{t('dashboard.admin_subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageDropdown />
+            <NotificationDropdown />
             <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-bold uppercase tracking-wider">
-              {user?.role}
+              {t('dashboard.role_admin')}
             </span>
             <span className="text-slate-300 text-xs">|</span>
             <span className="text-slate-700 text-xs font-semibold">{user?.name}</span>
@@ -3618,6 +3661,125 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Tab: Statistiques */}
+        {activeTab === 'stats' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Statistiques Académiques & Performance</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Analyses et indicateurs de performance globale</p>
+              </div>
+              <button 
+                onClick={fetchDetailedStats}
+                className="px-3.5 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition-all text-slate-700 shadow-sm"
+              >
+                🔄 Rafraîchir les données
+              </button>
+            </div>
+
+            {loadingDetailedStats ? (
+              <div className="py-20 text-center text-slate-500 text-xs font-semibold animate-pulse">
+                Chargement des indicateurs graphiques...
+              </div>
+            ) : detailedStats ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Chart 1: Taux d'absentéisme par Filière */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Taux d'Absentéisme Moyen par Filière</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={detailedStats.absenteisme_par_filiere || []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="filiere" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} unit="%" />
+                        <Tooltip 
+                          contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                          formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Taux d\'absence']}
+                        />
+                        <Bar dataKey="taux_absence" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={45} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Chart 2: Moyenne Générale par Filière */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Moyenne Générale des Notes par Filière</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={detailedStats.moyenne_par_filiere || []}>
+                        <defs>
+                          <linearGradient id="colorMoyenne" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ec4899" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="filiere" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} domain={[0, 20]} />
+                        <Tooltip 
+                          contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, 'Moyenne']}
+                        />
+                        <Area type="monotone" dataKey="moyenne" stroke="#ec4899" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMoyenne)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Card & Mini-Chart 3: Occupation des Salles */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Taux d'Occupation des Salles</h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Calcule le nombre de réservations de salles actives par rapport au total des réservations effectuées dans le système.
+                    </p>
+                    <div className="pt-2">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Réservations Actives / Totales</span>
+                      <span className="text-2xl font-extrabold text-slate-800">
+                        {detailedStats.salles_occupation?.reservations_actives || 0} <span className="text-xs font-semibold text-slate-400">sur {detailedStats.salles_occupation?.total_reservations || 0}</span>
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="md:col-span-2 h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: 'Réservations Actives', count: detailedStats.salles_occupation?.reservations_actives || 0, fill: '#10b981' },
+                        { name: 'Réservations Inactives/Autre', count: (detailedStats.salles_occupation?.total_reservations || 0) - (detailedStats.salles_occupation?.reservations_actives || 0), fill: '#94a3b8' }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <Tooltip 
+                          contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                          formatter={(value) => [value, 'Volume']}
+                        />
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                          {
+                            [
+                              { fill: '#10b981' },
+                              { fill: '#94a3b8' }
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))
+                          }
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-400 text-xs italic bg-white border border-slate-200/85 rounded-2xl">
+                Aucune donnée statistique disponible pour le moment.
+              </div>
+            )}
           </div>
         )}
       </main>

@@ -1,7 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import NotificationDropdown from '../components/NotificationDropdown';
+import LanguageDropdown from '../components/LanguageDropdown';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, PieChart, Pie } from 'recharts';
 import { 
   BookOpen, 
   UserCheck, 
@@ -22,7 +25,8 @@ import {
   X,
   Trash2,
   MapPin,
-  Users
+  Users,
+  BarChart3 as BarChartIcon
 } from 'lucide-react';
 
 // Helper to split 3-hour slots into two 1h30 sessions
@@ -92,11 +96,22 @@ const getDisplaySlots = (slots) => {
 
 export default function ProfessorDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('grades');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, []);
 
   // Groups and Modules taught by this professor (fetched dynamically)
   const [groups, setGroups] = useState([]);
   const [modules, setModules] = useState([]);
+  const [detailedStats, setDetailedStats] = useState(null);
+  const [loadingDetailedStats, setLoadingDetailedStats] = useState(true);
   
   const [selectedGroup, setSelectedGroup] = useState('');
   const [selectedModule, setSelectedModule] = useState('');
@@ -172,10 +187,23 @@ export default function ProfessorDashboard() {
   const [selectedAttendanceModuleId, setSelectedAttendanceModuleId] = useState('');
   const [filteredTimetableSlots, setFilteredTimetableSlots] = useState([]);
 
+  const fetchDetailedStats = async () => {
+    setLoadingDetailedStats(true);
+    try {
+      const res = await api.get('/stats/professor');
+      setDetailedStats(res.data);
+    } catch (e) {
+      console.warn("Failed to fetch professor detailed stats", e);
+    } finally {
+      setLoadingDetailedStats(false);
+    }
+  };
+
   // Fetch groups and modules taught by the professor on mount
   useEffect(() => {
     const initProfessorContext = async () => {
       try {
+        fetchDetailedStats();
         const [modulesRes, groupsRes, timetablesRes] = await Promise.all([
           api.get('/classroom/modules'),
           api.get('/professor/groups'),
@@ -834,6 +862,33 @@ export default function ProfessorDashboard() {
     setTimeout(() => setNotification(''), 4000);
   };
 
+  const handleExportAttendanceCSV = async () => {
+    const timetableId = selectedTimetableKey.split('-')[0] || '';
+    const sessionPart = Number(selectedTimetableKey.split('-')[1]) || 1;
+
+    if (!timetableId) {
+      setNotification("Erreur : Veuillez sélectionner un créneau d'emploi du temps.");
+      setTimeout(() => setNotification(''), 4000);
+      return;
+    }
+
+    try {
+      const response = await api.get(`/export/attendance/${timetableId}/${attendanceDate}/${sessionPart}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `feuille_appel_${attendanceDate}_partie${sessionPart}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error("Erreur lors de l'exportation du CSV", err);
+      alert("Une erreur est survenue lors de l'exportation du CSV.");
+    }
+  };
+
   const handleReserve = async (e) => {
     e.preventDefault();
     const selectedRoomObj = rooms.find(r => r.id === Number(reserveForm.roomId));
@@ -929,7 +984,7 @@ export default function ProfessorDashboard() {
               }`}
             >
               <BookOpen className="h-4 w-4" />
-              Saisie des Notes
+              {t('nav.grades')}
             </button>
 
             <button
@@ -941,7 +996,7 @@ export default function ProfessorDashboard() {
               }`}
             >
               <UserCheck className="h-4 w-4" />
-              Appel & Absences
+              {t('nav.attendance')}
             </button>
 
             <button
@@ -953,7 +1008,7 @@ export default function ProfessorDashboard() {
               }`}
             >
               <Building className="h-4 w-4" />
-              Réservation Salles
+              {t('nav.rooms')}
             </button>
 
             <button
@@ -965,7 +1020,7 @@ export default function ProfessorDashboard() {
               }`}
             >
               <Clock className="h-4 w-4" />
-              Cahier de Textes
+              {t('nav.logbook')}
             </button>
 
             <button
@@ -977,7 +1032,7 @@ export default function ProfessorDashboard() {
               }`}
             >
               <Calendar className="h-4 w-4" />
-              Emploi du Temps
+              {t('nav.timetable')}
             </button>
 
             <button
@@ -989,7 +1044,7 @@ export default function ProfessorDashboard() {
               }`}
             >
               <Layers className="h-4 w-4" />
-              Espace Cours (Classroom)
+              {t('nav.classroom')}
             </button>
 
             <button
@@ -1001,7 +1056,19 @@ export default function ProfessorDashboard() {
               }`}
             >
               <FileText className="h-4 w-4" />
-              Demandes Documents
+              {t('nav.documents')}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'stats' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/80 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-550 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <BarChartIcon className="h-4 w-4" />
+              {t('nav.stats')}
             </button>
           </nav>
         </div>
@@ -1011,7 +1078,7 @@ export default function ProfessorDashboard() {
           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-50 text-slate-550 hover:text-rose-605 text-xs font-bold uppercase tracking-wider transition-all duration-200 mt-auto border border-transparent hover:border-rose-200/50"
         >
           <LogOut className="h-4 w-4" />
-          Déconnexion
+          {t('nav.logout')}
         </button>
       </aside>
 
@@ -1019,15 +1086,17 @@ export default function ProfessorDashboard() {
       <main className="flex-1 p-8 overflow-y-auto relative z-10">
         <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-200/80">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Espace Enseignant</h1>
-            <p className="text-slate-550 text-xs mt-1">Gérez vos modules et encadrez vos étudiants</p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard.prof_title')}</h1>
+            <p className="text-slate-555 text-xs mt-1">{t('dashboard.prof_subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageDropdown />
+            <NotificationDropdown />
             <span className="px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-600 text-[10px] font-bold uppercase tracking-wider">
-              Professeur
+              {t('dashboard.role_professor')}
             </span>
             <span className="text-slate-300 text-xs">|</span>
-            <span className="text-slate-700 text-xs font-semibold">{user?.name}</span>
+            <span className="text-slate-750 text-xs font-semibold">{user?.name}</span>
           </div>
         </header>
 
@@ -1272,7 +1341,13 @@ export default function ProfessorDashboard() {
               </table>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              <button 
+                onClick={handleExportAttendanceCSV}
+                className="py-3 px-5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-2 shadow-sm"
+              >
+                <Download className="h-4 w-4 text-emerald-600" /> Télécharger la feuille d'appel (CSV)
+              </button>
               <button 
                 onClick={handleSaveAttendance}
                 className="py-3 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center gap-2 shadow-md shadow-indigo-500/10"
@@ -2159,6 +2234,116 @@ export default function ProfessorDashboard() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Tab: Statistiques */}
+        {activeTab === 'stats' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Analyses Pédagogiques & Absences</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Indicateurs de réussite de vos classes et participation</p>
+              </div>
+              <button 
+                onClick={fetchDetailedStats}
+                className="px-3.5 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition-all text-slate-700 shadow-sm"
+              >
+                🔄 Rafraîchir les données
+              </button>
+            </div>
+
+            {loadingDetailedStats ? (
+              <div className="py-20 text-center text-slate-500 text-xs font-semibold animate-pulse">
+                Chargement de vos statistiques...
+              </div>
+            ) : detailedStats ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Chart 1: Moyenne Générale par Module */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Moyenne des Notes par Module Enseigné</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={detailedStats.moyenne_par_module || []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="module" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} domain={[0, 20]} />
+                        <Tooltip 
+                          contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, 'Moyenne']}
+                        />
+                        <Bar dataKey="moyenne" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={45} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Chart 2: Distribution des Notes par Palier */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl flex flex-col justify-between">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Répartition des Notes par Palier</h3>
+                  <div className="flex-1 h-56 flex items-center justify-center relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: '[0 - 5]', value: detailedStats.distribution_notes?.['0-5'] || 0, fill: '#ef4444' },
+                            { name: '[5 - 10]', value: detailedStats.distribution_notes?.['5-10'] || 0, fill: '#f59e0b' },
+                            { name: '[10 - 15]', value: detailedStats.distribution_notes?.['10-15'] || 0, fill: '#3b82f6' },
+                            { name: '[15 - 20]', value: detailedStats.distribution_notes?.['15-20'] || 0, fill: '#10b981' }
+                          ].filter(d => d.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {
+                            [
+                              { fill: '#ef4444' },
+                              { fill: '#f59e0b' },
+                              { fill: '#3b82f6' },
+                              { fill: '#10b981' }
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))
+                          }
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Chart 3: Taux de Présence par Classe */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl lg:col-span-2">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Taux de Présence Moyen par Groupe d'Étudiants</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={detailedStats.presence_par_classe || []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="classe" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} unit="%" />
+                        <Tooltip 
+                          contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                          formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Présence']}
+                        />
+                        <Bar dataKey="taux_presence" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={45} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-400 text-xs italic bg-white border border-slate-200/85 rounded-2xl">
+                Aucune donnée statistique disponible pour le moment.
+              </div>
+            )}
           </div>
         )}
       </main>

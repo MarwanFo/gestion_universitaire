@@ -16,6 +16,9 @@ use App\Http\Controllers\Api\ModuleController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\RoomController;
 use App\Http\Controllers\Api\LogbookController;
+use App\Http\Controllers\Api\StatsController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ExportController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/admin/documents/{id}/pdf', [DocumentRequestController::class, 'downloadPdf']);
@@ -23,6 +26,11 @@ Route::get('/admin/documents/{id}/pdf', [DocumentRequestController::class, 'down
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'read']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
 
     // Notes (Grades)
     Route::get('/grades', [GradeController::class, 'index']);
@@ -64,6 +72,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/professor/absences', [AbsenceController::class, 'getProfessorAbsences']);
     Route::get('/professor/logbooks', [LogbookController::class, 'index']);
     Route::post('/professor/logbooks', [LogbookController::class, 'store']);
+
+    // Statistiques et analyses
+    Route::get('/stats/admin', [StatsController::class, 'getAdminStats']);
+    Route::get('/stats/professor', [StatsController::class, 'getProfessorStats']);
+    Route::get('/stats/student', [StatsController::class, 'getStudentStats']);
+
+    // Exports
+    Route::get('/export/student/{studentId}/transcript', [ExportController::class, 'exportStudentTranscriptPdf']);
+    Route::get('/export/attendance/{timetableId}/{date}/{sessionPart}', [ExportController::class, 'exportClassAttendanceCsv']);
 
     // Secured Administration API Routes
     Route::middleware('role:admin')->group(function () {

@@ -118,6 +118,36 @@ class ClassroomController extends Controller
             'allow_student_attachments' => filter_var($request->input('allow_student_attachments'), FILTER_VALIDATE_BOOLEAN),
         ]);
 
+        // Notify students of the group or module's field
+        try {
+            $students = \App\Models\User::where('role', 'student');
+            if ($announcement->group_id) {
+                $students->whereHas('studentProfile', function ($q) use ($announcement) {
+                    $q->where('group_id', $announcement->group_id);
+                });
+            } else {
+                $fieldIds = $announcement->module ? $announcement->module->fields->pluck('id')->toArray() : [];
+                if (!empty($fieldIds)) {
+                    $students->whereHas('studentProfile', function ($q) use ($fieldIds) {
+                        $q->whereIn('field_id', $fieldIds);
+                    });
+                }
+            }
+            $studentsList = $students->get();
+
+            /** @var \App\Models\User $student */
+            foreach ($studentsList as $student) {
+                $student->notify(new \App\Notifications\SystemNotification(
+                    "Nouvelle annonce : " . ($announcement->module ? $announcement->module->name : 'Cours'),
+                    $announcement->title,
+                    'info',
+                    '/classroom'
+                ));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to dispatch announcement notifications: " . $e->getMessage());
+        }
+
         return response()->json([
             'message' => 'Annonce publiée avec succès.',
             'announcement' => $announcement->load('professor')

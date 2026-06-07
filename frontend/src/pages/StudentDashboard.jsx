@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import NotificationDropdown from '../components/NotificationDropdown';
+import LanguageDropdown from '../components/LanguageDropdown';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Cell, LineChart, Line, Legend } from 'recharts';
 import { 
   BookOpen, 
   Calendar, 
@@ -18,12 +22,22 @@ import {
   MessageSquare,
   Clock,
   MapPin,
-  Plus
+  Plus,
+  BarChart3 as BarChartIcon
 } from 'lucide-react';
 
 export default function StudentDashboard() {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('grades');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, []);
 
   // 1. Grades State
   const [grades, setGrades] = useState([
@@ -32,6 +46,9 @@ export default function StudentDashboard() {
     { id: 3, module: 'Réseaux & Protocoles', cc1: 11, cc2: 10, exam: 12, average: 11.4, status: 'Validé' },
     { id: 4, module: 'Management de Projet Agile', cc1: 16, cc2: 15, exam: 17, average: 16.4, status: 'Validé avec Ment.' },
   ]);
+
+  const [detailedStats, setDetailedStats] = useState(null);
+  const [loadingDetailedStats, setLoadingDetailedStats] = useState(true);
 
   const overallAverage = grades.length > 0 ? grades.reduce((acc, curr) => acc + curr.average, 0) / grades.length : 0;
 
@@ -70,10 +87,23 @@ export default function StudentDashboard() {
     { day: 'Vendredi', slots: [] }
   ]);
 
+  const fetchDetailedStats = async () => {
+    setLoadingDetailedStats(true);
+    try {
+      const res = await api.get('/stats/student');
+      setDetailedStats(res.data);
+    } catch (e) {
+      console.warn("Failed to fetch student detailed stats", e);
+    } finally {
+      setLoadingDetailedStats(false);
+    }
+  };
+
   // Fetch API data on load
   useEffect(() => {
     const fetchStudentData = async () => {
       try {
+        fetchDetailedStats();
         const gradesRes = await api.get('/grades');
         if (gradesRes.data.length > 0) {
           setGrades(gradesRes.data.map(g => {
@@ -211,6 +241,24 @@ export default function StudentDashboard() {
   useEffect(() => {
     fetchAnnouncements();
   }, [selectedModule]);
+
+  const handleExportPDF = async () => {
+    try {
+      const response = await api.get(`/export/student/${user.id}/transcript`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `releve_notes_${user.last_name || 'etudiant'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error("Erreur lors de l'exportation du PDF", err);
+      alert("Une erreur est survenue lors de la génération du PDF.");
+    }
+  };
 
   const handleJustificationSubmit = async (e) => {
     e.preventDefault();
@@ -400,7 +448,7 @@ export default function StudentDashboard() {
               }`}
             >
               <Award className="h-4 w-4" />
-              Mes Notes
+              {t('nav.my_grades')}
             </button>
 
             <button
@@ -412,7 +460,7 @@ export default function StudentDashboard() {
               }`}
             >
               <BookOpen className="h-4 w-4" />
-              Espace Classroom
+              {t('nav.classroom')}
             </button>
 
             <button
@@ -424,7 +472,7 @@ export default function StudentDashboard() {
               }`}
             >
               <AlertTriangle className="h-4 w-4" />
-              Mes Absences
+              {t('nav.my_absences')}
             </button>
 
             <button
@@ -436,7 +484,7 @@ export default function StudentDashboard() {
               }`}
             >
               <Calendar className="h-4 w-4" />
-              Emploi du Temps
+              {t('nav.timetable')}
             </button>
 
             <button
@@ -448,7 +496,19 @@ export default function StudentDashboard() {
               }`}
             >
               <FileText className="h-4 w-4" />
-              Mes Documents
+              {t('nav.my_documents')}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                activeTab === 'stats' 
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-100/80 shadow-sm shadow-indigo-500/5' 
+                  : 'text-slate-550 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
+              }`}
+            >
+              <BarChartIcon className="h-4 w-4" />
+              {t('nav.stats')}
             </button>
           </nav>
         </div>
@@ -458,7 +518,7 @@ export default function StudentDashboard() {
           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-rose-50 text-slate-550 hover:text-rose-605 text-xs font-bold uppercase tracking-wider transition-all duration-200 mt-auto border border-transparent hover:border-rose-200/50"
         >
           <LogOut className="h-4 w-4" />
-          Déconnexion
+          {t('nav.logout')}
         </button>
       </aside>
 
@@ -466,12 +526,14 @@ export default function StudentDashboard() {
       <main className="flex-1 p-8 overflow-y-auto relative z-10">
         <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-200/80">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Espace Étudiant</h1>
-            <p className="text-slate-550 text-xs mt-1">Consultez vos résultats et gérez votre scolarité</p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard.student_title')}</h1>
+            <p className="text-slate-555 text-xs mt-1">{t('dashboard.student_subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageDropdown />
+            <NotificationDropdown />
             <span className="px-3 py-1 rounded-full bg-pink-50 border border-pink-100 text-pink-600 text-[10px] font-bold uppercase tracking-wider">
-              Étudiant
+              {t('dashboard.role_student')}
             </span>
             <span className="text-slate-300 text-xs">|</span>
             <span className="text-slate-555 text-xs font-semibold">{user?.group?.name || user?.group || 'GINFO-3A'}</span>
@@ -489,8 +551,17 @@ export default function StudentDashboard() {
                 <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Moyenne Générale Estimée</span>
                 <p className="text-4xl font-extrabold text-slate-900 mt-1">{overallAverage.toFixed(2)} <span className="text-lg font-normal text-slate-400">/ 20</span></p>
               </div>
-              <div className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-550 shadow-sm">
-                Filière : <span className="text-slate-800 font-bold">Génie Informatique</span>
+              <div className="flex items-center gap-3">
+                <div className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-550 shadow-sm">
+                  Filière : <span className="text-slate-800 font-bold">Génie Informatique</span>
+                </div>
+                <button
+                  onClick={handleExportPDF}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:scale-102 active:scale-98 transition-all duration-200 text-xs font-bold text-slate-700 shadow-sm"
+                >
+                  <FileText className="h-4 w-4 text-indigo-500" />
+                  Exporter en PDF
+                </button>
               </div>
             </div>
 
@@ -1095,6 +1166,113 @@ export default function StudentDashboard() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Tab: Statistiques */}
+        {activeTab === 'stats' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Statistiques Académiques & Progression</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Indicateurs de réussite personnels et comparatifs</p>
+              </div>
+              <button 
+                onClick={fetchDetailedStats}
+                className="px-3.5 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition-all text-slate-700 shadow-sm"
+              >
+                🔄 Rafraîchir les données
+              </button>
+            </div>
+
+            {loadingDetailedStats ? (
+              <div className="py-20 text-center text-slate-500 text-xs font-semibold animate-pulse">
+                Chargement de vos indicateurs...
+              </div>
+            ) : detailedStats ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Chart 1: Comparatif Moyenne Étudiant vs Classe */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Comparatif de Moyenne</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: 'Ma Moyenne', note: detailedStats.moyenne_generale || 0, fill: '#6366f1' },
+                        { name: 'Moyenne de la Classe', note: detailedStats.moyenne_classe || 0, fill: '#94a3b8' }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} domain={[0, 20]} />
+                        <Tooltip 
+                          contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, 'Moyenne']}
+                        />
+                        <Bar dataKey="note" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                          {
+                            [
+                              { fill: '#6366f1' },
+                              { fill: '#94a3b8' }
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))
+                          }
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Chart 2: Taux de Présence Global */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl flex flex-col justify-between">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Taux d'Assiduité / Présence</h3>
+                  <div className="flex-1 flex flex-col items-center justify-center p-4">
+                    <div className="relative flex items-center justify-center h-36 w-36 mb-4">
+                      {/* SVG circle logic */}
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" stroke="#f1f5f9" strokeWidth="8" fill="transparent" />
+                        <circle cx="50" cy="50" r="40" stroke="#10b981" strokeWidth="8" fill="transparent"
+                          strokeDasharray={2 * Math.PI * 40}
+                          strokeDashoffset={2 * Math.PI * 40 * (1 - (detailedStats.taux_presence || 100) / 100)}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute text-center">
+                        <span className="text-2xl font-extrabold text-slate-800">{Number(detailedStats.taux_presence || 0).toFixed(1)}%</span>
+                        <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Présence</span>
+                      </div>
+                    </div>
+                    <p className="text-center text-xs text-slate-500 max-w-xs leading-relaxed">
+                      Votre assiduité est calculée sur la base des appels enregistrés par vos enseignants dans l'ensemble des modules.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Chart 3: Évolution des Notes par Module */}
+                <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl lg:col-span-2">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Évolution de vos Notes par Module</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={detailedStats.evolution_notes || []}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="module" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} domain={[0, 20]} />
+                        <Tooltip 
+                          contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, 'Note']}
+                        />
+                        <Line type="monotone" dataKey="note" stroke="#ec4899" strokeWidth={3} dot={{ r: 4, stroke: '#ec4899', strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-400 text-xs italic bg-white border border-slate-200/85 rounded-2xl">
+                Aucune donnée statistique disponible pour le moment.
+              </div>
+            )}
           </div>
         )}
       </main>
