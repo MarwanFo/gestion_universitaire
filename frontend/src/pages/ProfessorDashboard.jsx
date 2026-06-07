@@ -20,7 +20,9 @@ import {
   Layers,
   Edit,
   X,
-  Trash2
+  Trash2,
+  MapPin,
+  Users
 } from 'lucide-react';
 
 // Helper to split 3-hour slots into two 1h30 sessions
@@ -143,7 +145,7 @@ export default function ProfessorDashboard() {
   const [selectedClassroomModuleId, setSelectedClassroomModuleId] = useState('');
   const [classroomAnnouncements, setClassroomAnnouncements] = useState([]);
   const [isAnnouncementsLoading, setIsAnnouncementsLoading] = useState(false);
-  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '' });
+  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', allow_student_attachments: false });
   const [attachedFile, setAttachedFile] = useState(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
   const fileInputRef = useRef(null);
@@ -375,6 +377,7 @@ export default function ProfessorDashboard() {
       const formData = new FormData();
       formData.append('title', announcementForm.title);
       formData.append('content', announcementForm.content);
+      formData.append('allow_student_attachments', announcementForm.allow_student_attachments ? '1' : '0');
       if (selectedClassroomGroupId) {
         formData.append('group_id', selectedClassroomGroupId);
       }
@@ -402,7 +405,7 @@ export default function ProfessorDashboard() {
         setNotification("Annonce publiée avec succès !");
       }
 
-      setAnnouncementForm({ title: '', content: '' });
+      setAnnouncementForm({ title: '', content: '', allow_student_attachments: false });
       setAttachedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -420,14 +423,15 @@ export default function ProfessorDashboard() {
     setEditingAnnouncement(ann);
     setAnnouncementForm({
       title: ann.title,
-      content: ann.content
+      content: ann.content,
+      allow_student_attachments: !!ann.allow_student_attachments
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEditAnnouncement = () => {
     setEditingAnnouncement(null);
-    setAnnouncementForm({ title: '', content: '' });
+    setAnnouncementForm({ title: '', content: '', allow_student_attachments: false });
     setAttachedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -1487,65 +1491,95 @@ export default function ProfessorDashboard() {
         )}
 
         {/* Tab 5: Emploi du Temps */}
-        {activeTab === 'timetable' && (
-          <div className="space-y-6 animate-fadeIn">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Mon Emploi du Temps Hebdomadaire</h2>
-              <span className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-                Semestre Actuel
-              </span>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(day => {
-                const dayData = groupedTimetables.find(d => d.day === day);
-                const slots = dayData?.slots || [];
-                return (
-                  <div key={day} className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm shadow-slate-100/50 flex flex-col min-h-[350px]">
-                    <div className="border-b border-slate-150 pb-2 mb-3">
-                      <h3 className="font-extrabold text-xs text-slate-800 uppercase tracking-wider">{day}</h3>
-                    </div>
-                    <div className="space-y-3 flex-1 flex flex-col justify-start">
-                      {slots.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center text-slate-400 text-xs italic py-10">
-                          Aucun cours
-                        </div>
-                      ) : (
-                        slots.map(slot => (
-                          <div key={slot.id} className="p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 border border-slate-200/60 hover:border-indigo-150 transition-all duration-200 group relative">
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <Clock className="h-3 w-3 text-slate-400 group-hover:text-indigo-500" />
-                              <span className="text-[10px] font-bold text-slate-500 group-hover:text-indigo-600">
-                                {slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)}
-                              </span>
-                            </div>
-                            <h4 className="text-xs font-bold text-slate-850 line-clamp-2 leading-snug group-hover:text-indigo-950 mb-1.5">
-                              {slot.module?.name || 'Matière'}
-                            </h4>
-                            {slot.module?.code && (
-                              <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-2.5">
-                                {slot.module.code}
-                              </div>
-                            )}
-                            <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold border-t border-slate-200/40 pt-2 mt-auto">
-                              <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[8px] font-extrabold text-slate-600">
-                                {slot.group?.name || 'Classe'}
-                              </span>
-                              <span className="text-[9px] font-extrabold text-indigo-600">
-                                {slot.room?.name || 'Salle'}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {activeTab === 'timetable' && (() => {
+          const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+          const timeRanges = ['08:30-10:00', '10:30-12:00', '14:00-15:30', '16:00-17:30'];
+          
+          return (
+            <div className="space-y-6 animate-fadeIn">
+              <div className="flex justify-between items-center mb-2">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Mon Emploi du Temps Hebdomadaire</h2>
+                  <p className="text-xs text-slate-550 mt-0.5">Retrouvez vos séances et classes planifiées</p>
+                </div>
+                <span className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                  Semestre Actuel
+                </span>
+              </div>
 
+              <div className="rounded-2xl bg-white border border-slate-200/85 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[800px] border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                        <th className="p-4 w-28 text-left">Jour</th>
+                        <th className="p-4 border-l border-slate-100">08:30 - 10:00</th>
+                        <th className="p-4 border-l border-slate-100">10:30 - 12:00</th>
+                        <th className="p-4 border-l border-slate-100">14:00 - 15:30</th>
+                        <th className="p-4 border-l border-slate-100">16:00 - 17:30</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                      {days.map(day => {
+                        const dayData = groupedTimetables.find(d => d.day === day);
+                        return (
+                          <tr key={day} className="hover:bg-slate-50/30 transition-colors">
+                            <td className="p-4 font-bold text-slate-800 bg-slate-50/30 w-28">{day}</td>
+                            {timeRanges.map(timeRange => {
+                              const [start, end] = timeRange.split('-');
+                              const matchingSlot = dayData?.slots?.find(s => {
+                                const sStart = s.start_time || s.time?.split(' - ')[0];
+                                return sStart?.substring(0, 5) === start;
+                              });
+
+                              return (
+                                <td key={timeRange} className="p-3 border-l border-slate-100 w-1/4 h-24 relative">
+                                  {matchingSlot ? (
+                                    <div className="h-full p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/60 flex flex-col justify-between transition-all hover:shadow-sm">
+                                      <div className="space-y-1">
+                                        <div className="flex justify-between items-start">
+                                          <span className="px-1.5 py-0.5 rounded font-extrabold text-[9px] uppercase bg-indigo-600 text-white">
+                                            {matchingSlot.module_code || 'COURS'}
+                                          </span>
+                                          <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            {matchingSlot.time || `${start} - ${end}`}
+                                          </span>
+                                        </div>
+                                        <h4 className="font-bold text-slate-800 text-[11px] truncate mt-1" title={matchingSlot.module}>
+                                          {matchingSlot.module}
+                                        </h4>
+                                      </div>
+                                      <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                                        <span className="truncate flex items-center gap-1">
+                                          <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                          {matchingSlot.room || 'N/A'}
+                                        </span>
+                                        <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[8px] font-extrabold text-slate-650 flex items-center gap-1">
+                                          <Users className="h-3 w-3 text-slate-400" />
+                                          {matchingSlot.group || 'Classe'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="w-full h-full rounded-xl border border-dashed border-slate-100 bg-slate-50/10 flex items-center justify-center text-[10px] text-slate-400 italic">
+                                      Aucun cours
+                                    </div>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        
         {/* Tab 6: Espace Cours (Classroom) */}
         {activeTab === 'classroom' && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-fadeIn">
@@ -1714,6 +1748,19 @@ export default function ProfessorDashboard() {
                           )}
                         </div>
                       </div>
+
+                      <div className="flex items-center gap-2.5 pt-1.5 pb-1">
+                        <input
+                          type="checkbox"
+                          id="allow_student_attachments"
+                          checked={announcementForm.allow_student_attachments || false}
+                          onChange={e => setAnnouncementForm({ ...announcementForm, allow_student_attachments: e.target.checked })}
+                          className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        />
+                        <label htmlFor="allow_student_attachments" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                          Autoriser les étudiants à ajouter des pièces jointes (fichiers/rendus)
+                        </label>
+                      </div>
                     </div>
 
                     <div className="flex justify-end gap-2 pt-1">
@@ -1763,13 +1810,22 @@ export default function ProfessorDashboard() {
                               <div className="flex justify-between items-start gap-4 mb-3">
                                 <div className="space-y-1">
                                   <h4 className="text-xs font-extrabold text-indigo-950 uppercase tracking-wide leading-snug">{ann.title}</h4>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-[10px] text-slate-450 font-bold whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded">
                                       {new Date(ann.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                     {isEdited && (
                                       <span className="text-[9px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase tracking-wider">
                                         Modifié
+                                      </span>
+                                    )}
+                                    {ann.allow_student_attachments ? (
+                                      <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
+                                        Rendus autorisés
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-250 uppercase tracking-wider">
+                                        Rendus désactivés
                                       </span>
                                     )}
                                   </div>
@@ -1793,6 +1849,56 @@ export default function ProfessorDashboard() {
                               </div>
                               <p className="text-slate-650 text-xs leading-relaxed whitespace-pre-line">{ann.content}</p>
                               {renderFileAttachment(ann.file_path)}
+
+                              {ann.allow_student_attachments && (
+                                <div className="mt-4 pt-4 border-t border-slate-100">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-[10px] font-bold text-indigo-650 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-100 uppercase tracking-wider">
+                                      Pièces jointes des étudiants ({ann.student_attachments?.length || 0})
+                                    </span>
+                                  </div>
+                                  {ann.student_attachments && ann.student_attachments.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      {ann.student_attachments.map(att => {
+                                        const studentName = att.user ? `${att.user.first_name || ''} ${att.user.last_name || ''}` : 'Étudiant';
+                                        const fileInfo = getFileExtensionInfo(att.file_name);
+                                        const fileUrl = att.file_path.startsWith('http') ? att.file_path : `${storageBaseUrl}/${att.file_path}`;
+                                        const uploadDate = new Date(att.created_at).toLocaleDateString('fr-FR', {
+                                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                                        });
+                                        return (
+                                          <div key={att.id} className="p-3 rounded-xl border border-slate-205 bg-slate-50/50 hover:bg-slate-50 flex items-center justify-between gap-3 transition-colors">
+                                            <div className="min-w-0 flex-1">
+                                              <span className="block text-[10px] font-bold text-slate-800 truncate">{studentName}</span>
+                                              <a 
+                                                href={fileUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                className="text-[11px] font-medium text-indigo-600 hover:text-indigo-850 hover:underline truncate block mt-0.5"
+                                                title={att.file_name}
+                                              >
+                                                {att.file_name}
+                                              </a>
+                                              <span className="block text-[9px] text-slate-400 mt-0.5">{uploadDate}</span>
+                                            </div>
+                                            <a
+                                              href={fileUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-all ${fileInfo.color} shadow-sm`}
+                                              title="Télécharger"
+                                            >
+                                              <Download className={`h-3.5 w-3.5 ${fileInfo.iconColor}`} />
+                                            </a>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <p className="text-[11px] text-slate-450 italic">Aucun étudiant n'a encore ajouté de pièce jointe.</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}

@@ -44,7 +44,7 @@ class ClassroomController extends Controller
         $query = Announcement::where('module_id', $moduleId);
 
         if ($user->role === 'student') {
-            $groupId = $user->group_id;
+            $groupId = $user->group ? $user->group->id : ($user->studentProfile ? $user->studentProfile->group_id : null);
             if ($groupId) {
                 $query->where(function($q) use ($groupId) {
                     $q->where('group_id', $groupId)
@@ -58,13 +58,23 @@ class ClassroomController extends Controller
             }
         }
 
-        $announcements = $query->with([
+        $relations = [
             'professor',
             'comments' => function($q) {
                 $q->orderBy('created_at', 'asc');
             },
             'comments.user'
-        ])
+        ];
+
+        if ($user->role === 'professor') {
+            $relations[] = 'studentAttachments.user';
+        } else {
+            $relations['studentAttachments'] = function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            };
+        }
+
+        $announcements = $query->with($relations)
         ->orderBy('created_at', 'desc')
         ->get();
 
@@ -86,6 +96,7 @@ class ClassroomController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'file' => 'nullable|file|mimes:pdf,docx,pptx,zip,jpg,png|max:5120',
+            'allow_student_attachments' => 'nullable',
         ]);
 
         $filePath = null;
@@ -104,6 +115,7 @@ class ClassroomController extends Controller
             'content' => $request->input('content'),
             'file_path' => $filePath,
             'file_name' => $fileName,
+            'allow_student_attachments' => filter_var($request->input('allow_student_attachments'), FILTER_VALIDATE_BOOLEAN),
         ]);
 
         return response()->json([
@@ -128,6 +140,7 @@ class ClassroomController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'file' => 'nullable|file|mimes:pdf,docx,pptx,zip,jpg,png|max:5120',
+            'allow_student_attachments' => 'nullable',
         ]);
 
         if ($request->has('group_id')) {
@@ -136,6 +149,10 @@ class ClassroomController extends Controller
 
         $announcement->title = $request->title;
         $announcement->content = $request->input('content');
+
+        if ($request->has('allow_student_attachments')) {
+            $announcement->allow_student_attachments = filter_var($request->input('allow_student_attachments'), FILTER_VALIDATE_BOOLEAN);
+        }
 
         if ($request->hasFile('file')) {
             $filePath = \App\Helpers\UploadHelper::upload($request->file('file'), 'announcements');
@@ -194,6 +211,101 @@ class ClassroomController extends Controller
         return response()->json([
             'message' => 'Commentaire ajouté.',
             'comment' => $comment->load('user')
+        ]);
+    }
+
+    /**
+     * Obtenir les devoirs/fichiers soumis (Étudiant voit les siens, Professeur voit tout).
+     */
+    public function getSubmissions(Request $request, $moduleId)
+    {
+        $user = $request->user();
+        if ($user->role === 'student') {
+            $submissions = \App\Models\StudentSubmission::where('module_id', $moduleId)
+                ->where('student_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+        } elseif ($user->role === 'professor') {
+            $submissions = \App\Models\StudentSubmission::where('module_id', $moduleId)
+                ->with('student')
+                ->orderBy('created_at', 'desc')
+                ->get();
+        } else {
+            $submissions = \App\Models\StudentSubmission::where('module_id', $moduleId)
+                ->with('student')
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
+
+        return response()->json($submissions);
+    }
+
+    /**
+     * Soumettre un fichier ou lien (Étudiant).
+     */
+    public function storeSubmission(Request $request, $moduleId)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'link' => 'nullable|url',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,zip,rar,png,jpg,jpeg|max:10240',
+        ]);
+
+        if (!$request->input('link') && !$request->hasFile('file')) {
+            return response()->json(['message' => 'Veuillez fournir un lien ou un fichier joint.'], 422);
+        }
+
+        $filePath = null;
+        $fileName = null;
+
+        if ($request->hasFile('file')) {
+            $filePath = \App\Helpers\UploadHelper::upload($request->file('file'), 'submissions');
+            $fileName = $request->file('file')->getClientOriginalName();
+        }
+
+        $submission = \App\Models\StudentSubmission::create([
+            'student_id' => $request->user()->id,
+            'module_id' => $moduleId,
+            'title' => $request->input('title'),
+            'link' => $request->input('link'),
+            'file_path' => $filePath,
+            'file_name' => $fileName,
+        ]);
+
+        return response()->json([
+            'message' => 'Votre fichier/lien a été partagé avec votre enseignant.',
+            'submission' => $submission->load('student')
+        ]);
+    }
+
+    /**
+     * Uploader une pièce jointe étudiant pour une annonce spécifique.
+     */
+    public function storeStudentAttachment(Request $request, $id)
+    {
+        $announcement = Announcement::findOrFail($id);
+
+        if (!$announcement->allow_student_attachments) {
+            return response()->json(['message' => 'Les pièces jointes ne sont pas autorisées pour cette annonce.'], 403);
+        }
+
+        $request->validate([
+            'file' => 'required|file|max:10240', // 10MB limit
+        ]);
+
+        $filePath = \App\Helpers\UploadHelper::upload($request->file('file'), 'student_attachments');
+        $fileName = $request->file('file')->getClientOriginalName();
+
+        $attachment = \App\Models\StudentAttachment::create([
+            'announcement_id' => $announcement->id,
+            'user_id' => $request->user()->id,
+            'file_path' => $filePath,
+            'file_name' => $fileName,
+        ]);
+
+        return response()->json([
+            'message' => 'Fichier joint ajouté avec succès.',
+            'attachment' => $attachment->load('user')
         ]);
     }
 }

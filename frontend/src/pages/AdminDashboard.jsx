@@ -1760,17 +1760,17 @@ export default function AdminDashboard() {
                         <thead>
                           <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
                             <th className="p-4 w-28 text-left">Jour</th>
-                            <th className="p-4 border-l border-slate-100">08:30 - 10:30</th>
-                            <th className="p-4 border-l border-slate-100">10:30 - 12:30</th>
-                            <th className="p-4 border-l border-slate-100">14:00 - 16:00</th>
-                            <th className="p-4 border-l border-slate-100">16:00 - 18:00</th>
+                            <th className="p-4 border-l border-slate-100">08:30 - 10:00</th>
+                            <th className="p-4 border-l border-slate-100">10:30 - 12:00</th>
+                            <th className="p-4 border-l border-slate-100">14:00 - 15:30</th>
+                            <th className="p-4 border-l border-slate-100">16:00 - 17:30</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                           {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(day => (
                             <tr key={day} className="hover:bg-slate-50/30 transition-colors">
                               <td className="p-4 font-bold text-slate-800 bg-slate-50/30">{day}</td>
-                              {['08:30-10:30', '10:30-12:30', '14:00-16:00', '16:00-18:00'].map(timeRange => {
+                              {['08:30-10:00', '10:30-12:00', '14:00-15:30', '16:00-17:30'].map(timeRange => {
                                 const [start, end] = timeRange.split('-');
                                 const matchingSlot = timetableSlots.find(s => {
                                   const sStart = s.start_time.substring(0, 5);
@@ -1854,7 +1854,7 @@ export default function AdminDashboard() {
                   {timetableSlots.filter(s => {
                     const sStart = s.start_time.substring(0, 5);
                     const sEnd = s.end_time.substring(0, 5);
-                    const standardTimes = ['08:30', '10:30', '14:00', '16:00', '12:30', '18:00'];
+                    const standardTimes = ['08:30', '10:00', '10:30', '12:00', '14:00', '15:30', '16:00', '17:30'];
                     return !standardTimes.includes(sStart) || !standardTimes.includes(sEnd);
                   }).length > 0 && (
                     <div className="space-y-3">
@@ -1863,7 +1863,7 @@ export default function AdminDashboard() {
                         {timetableSlots.filter(s => {
                           const sStart = s.start_time.substring(0, 5);
                           const sEnd = s.end_time.substring(0, 5);
-                          const standardTimes = ['08:30', '10:30', '14:00', '16:00', '12:30', '18:00'];
+                          const standardTimes = ['08:30', '10:00', '10:30', '12:00', '14:00', '15:30', '16:00', '17:30'];
                           return !standardTimes.includes(sStart) || !standardTimes.includes(sEnd);
                         }).map(slot => (
                           <div key={slot.id} className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition-all hover:shadow-sm ${
@@ -2037,17 +2037,17 @@ export default function AdminDashboard() {
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
                           <th className="p-4 w-28 text-left">Jour</th>
-                          <th className="p-4 border-l border-slate-100">08:30 - 10:30</th>
-                          <th className="p-4 border-l border-slate-100">10:30 - 12:30</th>
-                          <th className="p-4 border-l border-slate-100">14:00 - 16:00</th>
-                          <th className="p-4 border-l border-slate-100">16:00 - 18:00</th>
+                          <th className="p-4 border-l border-slate-100">08:30 - 10:00</th>
+                          <th className="p-4 border-l border-slate-100">10:30 - 12:00</th>
+                          <th className="p-4 border-l border-slate-100">14:00 - 15:30</th>
+                          <th className="p-4 border-l border-slate-100">16:00 - 17:30</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                         {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(day => (
                           <tr key={day} className="hover:bg-slate-50/30 transition-colors">
                             <td className="p-4 font-bold text-slate-800 bg-slate-50/30">{day}</td>
-                            {['08:30-10:30', '10:30-12:30', '14:00-16:00', '16:00-18:00'].map(timeRange => {
+                            {['08:30-10:00', '10:30-12:00', '14:00-15:30', '16:00-17:30'].map(timeRange => {
                               const [start, end] = timeRange.split('-');
                               const matchingSlot = timetableSlots.find(s => {
                                 const sStart = s.start_time.substring(0, 5);
@@ -2116,7 +2116,7 @@ export default function AdminDashboard() {
                 {timetableSlots.filter(s => {
                   const sStart = s.start_time.substring(0, 5);
                   const sEnd = s.end_time.substring(0, 5);
-                  const standardTimes = ['08:30', '10:30', '14:00', '16:00', '12:30', '18:00'];
+                  const standardTimes = ['08:30', '10:00', '10:30', '12:00', '14:00', '15:30', '16:00', '17:30'];
                   return !standardTimes.includes(sStart) || !standardTimes.includes(sEnd);
                 }).length > 0 && (
                   <div className="space-y-3">
@@ -2125,7 +2125,7 @@ export default function AdminDashboard() {
                       {timetableSlots.filter(s => {
                         const sStart = s.start_time.substring(0, 5);
                         const sEnd = s.end_time.substring(0, 5);
-                        const standardTimes = ['08:30', '10:30', '14:00', '16:00', '12:30', '18:00'];
+                        const standardTimes = ['08:30', '10:00', '10:30', '12:00', '14:00', '15:30', '16:00', '17:30'];
                         return !standardTimes.includes(sStart) || !standardTimes.includes(sEnd);
                       }).map(s => (
                         <div key={s.id} className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
@@ -4654,10 +4654,10 @@ export default function AdminDashboard() {
                 <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Créneaux Standard</span>
                 <div className="flex gap-2 flex-wrap">
                   {[
-                    { label: '08:30 - 10:30', start: '08:30', end: '10:30' },
-                    { label: '10:30 - 12:30', start: '10:30', end: '12:30' },
-                    { label: '14:00 - 16:00', start: '14:00', end: '16:00' },
-                    { label: '16:00 - 18:00', start: '16:00', end: '18:00' },
+                    { label: '08:30 - 10:00', start: '08:30', end: '10:00' },
+                    { label: '10:30 - 12:00', start: '10:30', end: '12:00' },
+                    { label: '14:00 - 15:30', start: '14:00', end: '15:30' },
+                    { label: '16:00 - 17:30', start: '16:00', end: '17:30' },
                   ].map(p => (
                     <button
                       key={p.label}

@@ -15,7 +15,10 @@ import {
   FileArchive,
   Image,
   User,
-  MessageSquare
+  MessageSquare,
+  Clock,
+  MapPin,
+  Plus
 } from 'lucide-react';
 
 export default function StudentDashboard() {
@@ -191,20 +194,21 @@ export default function StudentDashboard() {
     fetchClassroomModules();
   }, [activeTab]);
 
+  const fetchAnnouncements = async () => {
+    if (!selectedModule) return;
+    try {
+      setClassroomLoading(true);
+      const res = await api.get(`/classroom/modules/${selectedModule.id}`);
+      setAnnouncements(res.data);
+    } catch (err) {
+      console.error("Error fetching announcements:", err);
+    } finally {
+      setClassroomLoading(false);
+    }
+  };
+
   // Fetch announcements when a module is selected
   useEffect(() => {
-    const fetchAnnouncements = async () => {
-      if (!selectedModule) return;
-      try {
-        setClassroomLoading(true);
-        const res = await api.get(`/classroom/modules/${selectedModule.id}`);
-        setAnnouncements(res.data);
-      } catch (err) {
-        console.error("Error fetching announcements:", err);
-      } finally {
-        setClassroomLoading(false);
-      }
-    };
     fetchAnnouncements();
   }, [selectedModule]);
 
@@ -340,6 +344,30 @@ export default function StudentDashboard() {
       );
       // Re-populate text so they don't lose their message
       setCommentInputs(prev => ({ ...prev, [announcementId]: commentText }));
+    }
+  };
+
+  const handleUploadStudentAttachment = async (e, announcementId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      await api.post(`/classroom/announcements/${announcementId}/attachments`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setDocNotification("Fichier joint/rendu ajouté avec succès !");
+      setTimeout(() => setDocNotification(""), 4000);
+      fetchAnnouncements();
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.message || "Erreur lors du dépôt du fichier.";
+      alert(errMsg);
     }
   };
 
@@ -610,8 +638,21 @@ export default function StudentDashboard() {
         {/* Tab 3: Timetable */}
         {activeTab === 'timetable' && (() => {
           const totalSlotsCount = timetable.reduce((acc, d) => acc + (d.slots?.length || 0), 0);
+          const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+          const timeRanges = ['08:30-10:00', '10:30-12:00', '14:00-15:30', '16:00-17:30'];
+
           return (
             <div className="space-y-6 animate-fadeIn">
+              <div className="flex justify-between items-center mb-2">
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Mon Emploi du Temps Hebdomadaire</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Retrouvez les séances planifiées pour votre classe</p>
+                </div>
+                <span className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                  Semestre Actuel
+                </span>
+              </div>
+
               {totalSlotsCount === 0 ? (
                 <div className="p-8 rounded-2xl bg-amber-50/50 border border-amber-200/80 shadow-sm text-center max-w-xl mx-auto space-y-3 my-12">
                   <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
@@ -621,25 +662,75 @@ export default function StudentDashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  {timetable.map((dayPlan, i) => (
-                    <div key={i} className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-                      <span className="block border-b border-slate-200 pb-2 font-bold text-slate-900 text-xs text-center uppercase tracking-wider">{dayPlan.day}</span>
-                      <div className="mt-4 space-y-3">
-                        {dayPlan.slots.length > 0 ? (
-                          dayPlan.slots.map((slot, j) => (
-                            <div key={j} className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
-                              <span className="block text-[8px] font-bold text-indigo-600">{slot.time}</span>
-                              <span className="block text-[10px] font-bold text-slate-800 leading-snug">{slot.module}</span>
-                              <span className="block text-[9px] text-slate-500 font-medium">{slot.room}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <span className="block text-center text-slate-400 text-[10px] py-4 italic">Aucun cours</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div className="rounded-2xl bg-white border border-slate-200/85 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[800px] border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                          <th className="p-4 w-28 text-left">Jour</th>
+                          <th className="p-4 border-l border-slate-100">08:30 - 10:00</th>
+                          <th className="p-4 border-l border-slate-100">10:30 - 12:00</th>
+                          <th className="p-4 border-l border-slate-100">14:00 - 15:30</th>
+                          <th className="p-4 border-l border-slate-100">16:00 - 17:30</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                        {days.map(day => {
+                          const dayData = timetable.find(d => d.day === day);
+                          return (
+                            <tr key={day} className="hover:bg-slate-50/30 transition-colors">
+                              <td className="p-4 font-bold text-slate-800 bg-slate-50/30 w-28">{day}</td>
+                              {timeRanges.map(timeRange => {
+                                const [start, end] = timeRange.split('-');
+                                const matchingSlot = dayData?.slots?.find(s => {
+                                  const sStart = s.start_time || s.time?.split(' - ')[0];
+                                  return sStart?.substring(0, 5) === start;
+                                });
+
+                                return (
+                                  <td key={timeRange} className="p-3 border-l border-slate-100 w-1/4 h-24 relative">
+                                    {matchingSlot ? (
+                                      <div className="h-full p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/60 flex flex-col justify-between transition-all hover:shadow-sm">
+                                        <div className="space-y-1">
+                                          <div className="flex justify-between items-start">
+                                            <span className="px-1.5 py-0.5 rounded font-extrabold text-[9px] uppercase bg-indigo-600 text-white">
+                                              {matchingSlot.module_code || 'COURS'}
+                                            </span>
+                                            <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
+                                              <Clock className="h-3 w-3" />
+                                              {matchingSlot.time || `${start} - ${end}`}
+                                            </span>
+                                          </div>
+                                          <h4 className="font-bold text-slate-800 text-[11px] truncate mt-1" title={matchingSlot.module}>
+                                            {matchingSlot.module}
+                                          </h4>
+                                        </div>
+                                        <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                                          <span className="truncate flex items-center gap-1">
+                                            <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                            {matchingSlot.room || 'N/A'}
+                                          </span>
+                                          {matchingSlot.group && (
+                                            <span className="text-slate-400 text-[9px]">
+                                              {matchingSlot.group}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="w-full h-full rounded-xl border border-dashed border-slate-100 bg-slate-50/10 flex items-center justify-center text-[10px] text-slate-400 italic">
+                                        Aucun cours
+                                      </div>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -837,6 +928,11 @@ export default function StudentDashboard() {
                                       Modifié
                                     </span>
                                   )}
+                                  {ann.allow_student_attachments && (
+                                    <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
+                                      Rendu demandé
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -855,6 +951,78 @@ export default function StudentDashboard() {
                             <div className="pt-2 border-t border-slate-100">
                               <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Support joint</span>
                               {renderFileAttachment(ann.file_path)}
+                            </div>
+                          )}
+
+                          {/* Espace Rendu/Fichiers Joints Étudiant */}
+                          {ann.allow_student_attachments && (
+                            <div className="pt-3 border-t border-slate-100 space-y-2">
+                              <span className="block text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest">Mon rendu / Pièce jointe</span>
+                              {ann.student_attachments && ann.student_attachments.length > 0 ? (
+                                <div className="space-y-2">
+                                  {ann.student_attachments.map(att => {
+                                    const fileInfo = getFileExtensionInfo(att.file_name);
+                                    const fileUrl = att.file_path.startsWith('http') ? att.file_path : `${storageBaseUrl}/${att.file_path}`;
+                                    return (
+                                      <div key={att.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex items-center justify-between gap-3 shadow-sm">
+                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                          <div className="h-8 w-8 rounded-lg border bg-white flex items-center justify-center flex-shrink-0">
+                                            <Paperclip className={`h-4 w-4 ${fileInfo.iconColor}`} />
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <a 
+                                              href={fileUrl} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer" 
+                                              className="text-xs font-bold text-slate-800 hover:text-indigo-650 hover:underline truncate block"
+                                              title={att.file_name}
+                                            >
+                                              {att.file_name}
+                                            </a>
+                                            <span className="text-[9px] text-slate-400 block mt-0.5">
+                                              Ajouté le {new Date(att.created_at).toLocaleDateString('fr-FR', {
+                                                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                                              })}
+                                            </span>
+                                          </div>
+                                        </div>
+                                        <a
+                                          href={fileUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-all ${fileInfo.color}`}
+                                        >
+                                          <Download className={`h-3.5 w-3.5 ${fileInfo.iconColor}`} />
+                                        </a>
+                                      </div>
+                                    );
+                                  })}
+                                  <div className="pt-1">
+                                    <label className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1.5">
+                                      <Plus className="h-3.5 w-3.5" />
+                                      Remplacer mon fichier rendu
+                                      <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        onChange={(e) => handleUploadStudentAttachment(e, ann.id)} 
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-center space-y-2">
+                                  <p className="text-[11px] text-slate-500 font-medium">Aucun fichier rendu pour le moment.</p>
+                                  <label className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer shadow-sm shadow-indigo-500/10 transition-colors flex items-center gap-2">
+                                    <Paperclip className="h-3.5 w-3.5" />
+                                    Déposer mon rendu
+                                    <input 
+                                      type="file" 
+                                      className="hidden" 
+                                      onChange={(e) => handleUploadStudentAttachment(e, ann.id)} 
+                                    />
+                                  </label>
+                                </div>
+                              )}
                             </div>
                           )}
 

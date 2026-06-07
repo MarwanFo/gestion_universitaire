@@ -11,7 +11,7 @@ class Announcement extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['module_id', 'group_id', 'professor_id', 'title', 'content', 'file_path', 'file_name'];
+    protected $fillable = ['module_id', 'group_id', 'professor_id', 'title', 'content', 'file_path', 'file_name', 'allow_student_attachments'];
 
     public function module(): BelongsTo
     {
@@ -31,5 +31,10 @@ class Announcement extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
+    }
+
+    public function studentAttachments(): HasMany
+    {
+        return $this->hasMany(StudentAttachment::class);
     }
 }
