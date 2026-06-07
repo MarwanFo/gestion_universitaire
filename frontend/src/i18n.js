@@ -5,9 +5,9 @@ import translationEN from './locales/en.json';
 import translationAR from './locales/ar.json';
 
 const resources = {
-  fr: translationFR,
-  en: translationEN,
-  ar: translationAR,
+  fr: { translation: { ...translationFR, ...translationFR.translation } },
+  en: { translation: { ...translationEN, ...translationEN.translation } },
+  ar: { translation: { ...translationAR, ...translationAR.translation } },
 };
 
 i18n

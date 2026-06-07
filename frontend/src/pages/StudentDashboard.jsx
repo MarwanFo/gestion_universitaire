@@ -536,7 +536,7 @@ export default function StudentDashboard() {
               {t('dashboard.role_student')}
             </span>
             <span className="text-slate-300 text-xs">|</span>
-            <span className="text-slate-555 text-xs font-semibold">{user?.group?.name || user?.group || 'GINFO-3A'}</span>
+            <span className="text-slate-555 text-xs font-semibold">{t(user?.group?.name || user?.group || 'GINFO-3A')}</span>
             <span className="text-slate-300 text-xs">|</span>
             <span className="text-slate-700 text-xs font-semibold">{user?.name}</span>
           </div>
@@ -548,19 +548,19 @@ export default function StudentDashboard() {
             {/* Average Header Widget */}
             <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-500/5 to-purple-500/5 border border-indigo-100/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm shadow-indigo-500/5">
               <div>
-                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Moyenne Générale Estimée</span>
+                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{t('Moyenne Générale Estimée')}</span>
                 <p className="text-4xl font-extrabold text-slate-900 mt-1">{overallAverage.toFixed(2)} <span className="text-lg font-normal text-slate-400">/ 20</span></p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-550 shadow-sm">
-                  Filière : <span className="text-slate-800 font-bold">Génie Informatique</span>
+                  {t('common.filiere')} : <span className="text-slate-800 font-bold">{t('Génie Informatique')}</span>
                 </div>
                 <button
                   onClick={handleExportPDF}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:scale-102 active:scale-98 transition-all duration-200 text-xs font-bold text-slate-700 shadow-sm"
                 >
                   <FileText className="h-4 w-4 text-indigo-500" />
-                  Exporter en PDF
+                  {t('common.export_pdf')}
                 </button>
               </div>
             </div>
@@ -570,18 +570,18 @@ export default function StudentDashboard() {
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-4">Module</th>
+                    <th className="p-4">{t('common.module')}</th>
                     <th className="p-4 w-28 text-center">CC1 (20%)</th>
                     <th className="p-4 w-28 text-center">CC2 (20%)</th>
                     <th className="p-4 w-28 text-center">Examen (60%)</th>
-                    <th className="p-4 w-36 text-center">Moyenne</th>
-                    <th className="p-4 w-32 text-right">Statut</th>
+                    <th className="p-4 w-36 text-center">{t('common.average')}</th>
+                    <th className="p-4 w-32 text-right">{t('common.status')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                   {grades.map(g => (
                     <tr key={g.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 font-semibold text-slate-900">{g.module}</td>
+                      <td className="p-4 font-semibold text-slate-900">{t(g.module)}</td>
                       <td className="p-4 text-center text-slate-600 font-medium">{Number(g.cc1 || 0).toFixed(2)}</td>
                       <td className="p-4 text-center text-slate-600 font-medium">{Number(g.cc2 || 0).toFixed(2)}</td>
                       <td className="p-4 text-center text-slate-600 font-medium">{Number(g.exam || 0).toFixed(2)}</td>
@@ -591,7 +591,7 @@ export default function StudentDashboard() {
                           g.average >= 14 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                           'bg-indigo-50 border-indigo-100 text-indigo-600'
                         }`}>
-                          {g.status}
+                          {t(g.status)}
                         </span>
                       </td>
                     </tr>
@@ -607,20 +607,20 @@ export default function StudentDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
             {/* List */}
             <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">Relevé des Absences</h3>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">{t('Relevé des Absences')}</h3>
               <div className="space-y-4">
                 {absences.map(abs => (
                   <div key={abs.id} className="flex justify-between items-center p-4 rounded-xl bg-slate-50 border border-slate-200/60">
                     <div>
-                      <span className="block font-bold text-slate-800 text-xs">{abs.module}</span>
-                      <span className="text-[10px] text-slate-500 mt-1 block">Date: {abs.date} | Durée: {abs.hours}</span>
+                      <span className="block font-bold text-slate-800 text-xs">{t(abs.module)}</span>
+                      <span className="text-[10px] text-slate-500 mt-1 block">Date: {abs.date} | Durée: {t(abs.hours)}</span>
                     </div>
                     <span className={`px-2 py-0.5 rounded border text-[9px] font-bold uppercase ${
                       abs.status === 'Justifiée' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                       abs.status === 'En attente' ? 'bg-amber-50 border-amber-100 text-amber-600' :
                       'bg-rose-50 border-rose-100 text-rose-600'
                     }`}>
-                      {abs.status}
+                      {t(abs.status)}
                     </span>
                   </div>
                 ))}
@@ -637,20 +637,20 @@ export default function StudentDashboard() {
               )}
 
               <form onSubmit={handleJustificationSubmit} className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Justifier une absence</h3>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">{t('Justifier une absence')}</h3>
                 
                 {(() => {
                   const unjustifiedAbsences = absences.filter(abs => abs.status === 'Non justifiée');
                   return (
                     <>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Date de l'absence</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Date de l\'absence')}</label>
                         {unjustifiedAbsences.length === 0 ? (
                           <select
                             disabled
                             className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-400 outline-none cursor-not-allowed"
                           >
-                            <option>Aucune absence à justifier</option>
+                            <option>{t('Aucune absence à justifier')}</option>
                           </select>
                         ) : (
                           <select
@@ -658,10 +658,10 @@ export default function StudentDashboard() {
                             onChange={e => setJustificationForm({ ...justificationForm, absenceId: e.target.value })}
                             className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500"
                           >
-                            <option value="">-- Sélectionnez une absence --</option>
+                            <option value="">-- {t('Sélectionnez une absence')} --</option>
                             {unjustifiedAbsences.map(abs => (
                               <option key={abs.id} value={abs.id}>
-                                {abs.date} - {abs.module}
+                                {abs.date} - {t(abs.module)}
                               </option>
                             ))}
                           </select>
@@ -669,19 +669,19 @@ export default function StudentDashboard() {
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Raison / Commentaire</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Raison / Commentaire')}</label>
                         <textarea 
-                          rows="4"
+                           rows="4"
                           value={justificationForm.reason}
                           disabled={unjustifiedAbsences.length === 0}
                           onChange={e => setJustificationForm({ ...justificationForm, reason: e.target.value })}
-                          placeholder={unjustifiedAbsences.length === 0 ? "Aucune absence à justifier." : "Indiquez le motif et joignez un justificatif à l'administration par email."}
+                          placeholder={unjustifiedAbsences.length === 0 ? t("Aucune absence à justifier.") : t("Indiquez le motif et joignez un justificatif à l'administration par email.")}
                           className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 resize-none leading-relaxed disabled:opacity-50"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Document justificatif (PDF ou Image)</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Document justificatif (PDF ou Image)')}</label>
                         <input
                           type="file"
                           accept=".pdf, .jpg, .jpeg, .png"
@@ -696,7 +696,7 @@ export default function StudentDashboard() {
                         disabled={unjustifiedAbsences.length === 0 || !justificationForm.absenceId}
                         className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
                       >
-                        <Send className="h-3.5 w-3.5" /> Soumettre la pièce
+                        <Send className="h-3.5 w-3.5" /> {t('Soumettre la pièce')}
                       </button>
                     </>
                   );
@@ -716,20 +716,20 @@ export default function StudentDashboard() {
             <div className="space-y-6 animate-fadeIn">
               <div className="flex justify-between items-center mb-2">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Mon Emploi du Temps Hebdomadaire</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Retrouvez les séances planifiées pour votre classe</p>
+                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">{t('Mon Emploi du Temps Hebdomadaire')}</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">{t('Retrouvez les séances planifiées pour votre classe')}</p>
                 </div>
                 <span className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-                  Semestre Actuel
+                  {t('Semestre Actuel')}
                 </span>
               </div>
 
               {totalSlotsCount === 0 ? (
                 <div className="p-8 rounded-2xl bg-amber-50/50 border border-amber-200/80 shadow-sm text-center max-w-xl mx-auto space-y-3 my-12">
                   <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
-                  <h3 className="font-bold text-slate-800 text-sm">Emploi du temps non disponible</h3>
+                  <h3 className="font-bold text-slate-800 text-sm">{t('Emploi du temps non disponible')}</h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Votre emploi du temps n'a pas encore été publié par l'administration ou aucun cours n'est actuellement planifié pour votre classe.
+                    {t("Votre emploi du temps n'a pas encore été publié par l'administration ou aucun cours n'est actuellement planifié pour votre classe.")}
                   </p>
                 </div>
               ) : (
@@ -738,7 +738,7 @@ export default function StudentDashboard() {
                     <table className="w-full min-w-[800px] border-collapse">
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                          <th className="p-4 w-28 text-left">Jour</th>
+                          <th className="p-4 w-28 text-left">{t('Jour')}</th>
                           <th className="p-4 border-l border-slate-100">08:30 - 10:00</th>
                           <th className="p-4 border-l border-slate-100">10:30 - 12:00</th>
                           <th className="p-4 border-l border-slate-100">14:00 - 15:30</th>
@@ -750,7 +750,7 @@ export default function StudentDashboard() {
                           const dayData = timetable.find(d => d.day === day);
                           return (
                             <tr key={day} className="hover:bg-slate-50/30 transition-colors">
-                              <td className="p-4 font-bold text-slate-800 bg-slate-50/30 w-28">{day}</td>
+                              <td className="p-4 font-bold text-slate-800 bg-slate-50/30 w-28">{t(day)}</td>
                               {timeRanges.map(timeRange => {
                                 const [start, end] = timeRange.split('-');
                                 const matchingSlot = dayData?.slots?.find(s => {
@@ -773,7 +773,7 @@ export default function StudentDashboard() {
                                             </span>
                                           </div>
                                           <h4 className="font-bold text-slate-800 text-[11px] truncate mt-1" title={matchingSlot.module}>
-                                            {matchingSlot.module}
+                                            {t(matchingSlot.module)}
                                           </h4>
                                         </div>
                                         <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
@@ -783,14 +783,14 @@ export default function StudentDashboard() {
                                           </span>
                                           {matchingSlot.group && (
                                             <span className="text-slate-400 text-[9px]">
-                                              {matchingSlot.group}
+                                              {t(matchingSlot.group)}
                                             </span>
                                           )}
                                         </div>
                                       </div>
                                     ) : (
                                       <div className="w-full h-full rounded-xl border border-dashed border-slate-100 bg-slate-50/10 flex items-center justify-center text-[10px] text-slate-400 italic">
-                                        Aucun cours
+                                        {t('Aucun cours')}
                                       </div>
                                     )}
                                   </td>
@@ -813,13 +813,13 @@ export default function StudentDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
             {/* Status list */}
             <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">Suivi de mes requêtes</h3>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">{t('Suivi de mes requêtes')}</h3>
               <div className="space-y-4">
                 {docRequests.map(req => (
                   <div key={req.id} className="flex justify-between items-center p-4 rounded-xl bg-slate-50 border border-slate-200/60">
                     <div>
-                      <span className="block font-bold text-slate-800 text-xs">{req.docType}</span>
-                      <span className="text-[10px] text-slate-500 mt-1 block">Demandé le: {req.date}</span>
+                      <span className="block font-bold text-slate-800 text-xs">{t(req.docType)}</span>
+                      <span className="text-[10px] text-slate-500 mt-1 block">{t('Demandé le:')} {req.date}</span>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className={`px-2 py-0.5 rounded border text-[9px] font-bold uppercase ${
@@ -827,7 +827,7 @@ export default function StudentDashboard() {
                         req.status === 'Rejetée' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                         'bg-amber-50 border-amber-100 text-amber-600'
                       }`}>
-                        {req.status}
+                        {t(req.status)}
                       </span>
                       {req.status === 'Approuvée' && (
                         <button 
@@ -853,24 +853,24 @@ export default function StudentDashboard() {
               )}
 
               <form onSubmit={handleRequestDocument} className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Nouvelle Demande</h3>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">{t('Nouvelle Demande')}</h3>
                 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type de document</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Type de document')}</label>
                   <select
                     value={selectedDocType}
                     onChange={e => setSelectedDocType(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 outline-none focus:bg-white focus:border-indigo-500"
                   >
-                    <option value="Attestation de scolarité">Attestation de scolarité</option>
-                    <option value="Relevé de notes - GINFO 2">Relevé de notes - GINFO 2</option>
-                    <option value="Certificat d'inscription">Certificat d'inscription</option>
-                    <option value="Fiche d'inscription pédagogique">Fiche d'inscription pédagogique</option>
+                    <option value="Attestation de scolarité">{t('Attestation de scolarité')}</option>
+                    <option value="Relevé de notes - GINFO 2">{t('Relevé de notes - GINFO 2')}</option>
+                    <option value="Certificat d'inscription">{t("Certificat d'inscription")}</option>
+                    <option value="Fiche d'inscription pédagogique">{t("Fiche d'inscription pédagogique")}</option>
                   </select>
                 </div>
 
                 <button type="submit" className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm">
-                  Transmettre la demande
+                  {t('Transmettre la demande')}
                 </button>
               </form>
             </div>
@@ -883,10 +883,10 @@ export default function StudentDashboard() {
             {/* Left Sidebar: Modules list */}
             <div className="lg:col-span-4 space-y-4">
               <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-sm backdrop-blur-xl">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Mes Matières</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t('Mes Matières')}</h3>
                 {classroomModules.length === 0 ? (
                   <div className="py-8 text-center text-slate-400 text-xs italic">
-                    Aucun module disponible.
+                    {t('Aucun module disponible.')}
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
@@ -908,15 +908,15 @@ export default function StudentDashboard() {
                             }`}>
                               {mod.code}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-medium">Semestre {mod.semester}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{t('Semestre')} {mod.semester}</span>
                           </div>
                           <span className={`text-xs font-bold truncate leading-tight ${
                             isSelected ? 'text-indigo-950' : 'text-slate-800'
                           }`}>
-                            {mod.name}
+                            {t(mod.name)}
                           </span>
-                          <span className="text-[10px] text-slate-450 truncate">
-                            Prof. {mod.professor_name || 'Enseignant'}
+                          <span className="text-[10px] text-slate-455 truncate">
+                            Prof. {mod.professor_name || t('Enseignant')}
                           </span>
                         </button>
                       );
@@ -933,10 +933,10 @@ export default function StudentDashboard() {
                   {/* Module Header Card */}
                   <div className="p-6 rounded-2xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-100/80 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm shadow-indigo-500/5">
                     <div>
-                      <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest">Espace d'échange</span>
-                      <h2 className="text-lg font-bold text-slate-900 mt-0.5">{selectedModule.name}</h2>
+                      <span className="text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest">{t("Espace d'échange")}</span>
+                      <h2 className="text-lg font-bold text-slate-900 mt-0.5">{t(selectedModule.name)}</h2>
                       <p className="text-xs text-slate-500 mt-1">
-                        Professeur : <span className="font-semibold text-slate-700">{selectedModule.professor_name || 'Non assigné'}</span>
+                        {t('Enseignant')} : <span className="font-semibold text-slate-700">{selectedModule.professor_name || t('Enseignant')}</span>
                       </p>
                     </div>
                     <div className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] text-slate-600 font-bold uppercase tracking-wider shadow-sm">
@@ -966,9 +966,9 @@ export default function StudentDashboard() {
                   ) : announcements.length === 0 ? (
                     <div className="p-10 rounded-2xl bg-white border border-slate-200/80 shadow-sm text-center max-w-xl mx-auto space-y-3">
                       <BookOpen className="h-8 w-8 text-slate-300 mx-auto" />
-                      <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Aucune publication</h3>
+                      <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">{t('Aucune publication')}</h3>
                       <p className="text-xs text-slate-500 leading-relaxed">
-                        Votre enseignant n'a publié aucune annonce ou document de cours pour le moment.
+                        {t("Votre enseignant n'a publié aucune annonce ou document de cours pour le moment.")}
                       </p>
                     </div>
                   ) : (
@@ -987,7 +987,7 @@ export default function StudentDashboard() {
                                 </span>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <span className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100/80 text-indigo-600 text-[8px] font-extrabold uppercase">
-                                    Enseignant
+                                    {t('Enseignant')}
                                   </span>
                                   <span className="text-[9px] text-slate-400 font-semibold">
                                     {new Date(ann.created_at).toLocaleDateString('fr-FR', {
@@ -1020,7 +1020,7 @@ export default function StudentDashboard() {
                           {/* Pièce jointe */}
                           {ann.file_path && (
                             <div className="pt-2 border-t border-slate-100">
-                              <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Support joint</span>
+                              <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t('Support joint')}</span>
                               {renderFileAttachment(ann.file_path)}
                             </div>
                           )}
@@ -1028,7 +1028,7 @@ export default function StudentDashboard() {
                           {/* Espace Rendu/Fichiers Joints Étudiant */}
                           {ann.allow_student_attachments && (
                             <div className="pt-3 border-t border-slate-100 space-y-2">
-                              <span className="block text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest">Mon rendu / Pièce jointe</span>
+                              <span className="block text-[9px] font-extrabold text-indigo-600 uppercase tracking-widest">{t('Mon rendu / Pièce jointe')}</span>
                               {ann.student_attachments && ann.student_attachments.length > 0 ? (
                                 <div className="space-y-2">
                                   {ann.student_attachments.map(att => {
@@ -1051,7 +1051,7 @@ export default function StudentDashboard() {
                                               {att.file_name}
                                             </a>
                                             <span className="text-[9px] text-slate-400 block mt-0.5">
-                                              Ajouté le {new Date(att.created_at).toLocaleDateString('fr-FR', {
+                                              {t('Ajouté le')} {new Date(att.created_at).toLocaleDateString('fr-FR', {
                                                 day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
                                               })}
                                             </span>
@@ -1071,7 +1071,7 @@ export default function StudentDashboard() {
                                   <div className="pt-1">
                                     <label className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1.5">
                                       <Plus className="h-3.5 w-3.5" />
-                                      Remplacer mon fichier rendu
+                                      {t('Remplacer mon fichier rendu')}
                                       <input 
                                         type="file" 
                                         className="hidden" 
@@ -1082,10 +1082,10 @@ export default function StudentDashboard() {
                                 </div>
                               ) : (
                                 <div className="p-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-center space-y-2">
-                                  <p className="text-[11px] text-slate-500 font-medium">Aucun fichier rendu pour le moment.</p>
+                                  <p className="text-[11px] text-slate-500 font-medium">{t('Aucun fichier rendu pour le moment.')}</p>
                                   <label className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer shadow-sm shadow-indigo-500/10 transition-colors flex items-center gap-2">
                                     <Paperclip className="h-3.5 w-3.5" />
-                                    Déposer mon rendu
+                                    {t('Déposer mon rendu')}
                                     <input 
                                       type="file" 
                                       className="hidden" 
@@ -1101,7 +1101,7 @@ export default function StudentDashboard() {
                           <div className="pt-4 border-t border-slate-100 space-y-4">
                             <div className="flex items-center gap-2 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
                               <MessageSquare className="h-3.5 w-3.5" />
-                              <span>{ann.comments?.length || 0} Commentaire{(ann.comments?.length || 0) > 1 ? 's' : ''}</span>
+                              <span>{ann.comments?.length || 0} {t('Commentaire')}{(ann.comments?.length || 0) > 1 ? 's' : ''}</span>
                             </div>
 
                             {/* Fil des commentaires */}
@@ -1118,12 +1118,12 @@ export default function StudentDashboard() {
                                           ? 'bg-indigo-50 border border-indigo-100 text-indigo-600' 
                                           : 'bg-pink-50 border border-pink-100 text-pink-600'
                                       }`}>
-                                        {comment.user?.role === 'professor' ? 'Enseignant' : 'Étudiant'}
+                                        {comment.user?.role === 'professor' ? t('Enseignant') : t('Étudiant')}
                                       </span>
                                       <span className="text-[9px] text-slate-400 font-medium">
                                         {comment.created_at ? new Date(comment.created_at).toLocaleDateString('fr-FR', {
                                           day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                                        }) : 'À l\'instant'}
+                                        }) : t("À l'instant")}
                                       </span>
                                     </div>
                                     <p className="text-xs text-slate-655 leading-relaxed pl-1">
@@ -1143,7 +1143,7 @@ export default function StudentDashboard() {
                                 type="text"
                                 value={commentInputs[ann.id] || ''}
                                 onChange={(e) => setCommentInputs({ ...commentInputs, [ann.id]: e.target.value })}
-                                placeholder="Écrire un commentaire..."
+                                placeholder={t("Écrire un commentaire...")}
                                 className="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-500 transition-all"
                               />
                               <button
@@ -1162,7 +1162,7 @@ export default function StudentDashboard() {
                 </>
               ) : (
                 <div className="p-12 text-center text-slate-400 text-xs italic bg-white border border-slate-200/85 rounded-2xl">
-                  Sélectionnez un module à gauche pour afficher le flux de cours.
+                  {t("Sélectionnez un module à gauche pour afficher le flux de cours.")}
                 </div>
               )}
             </div>
@@ -1174,39 +1174,39 @@ export default function StudentDashboard() {
           <div className="space-y-6 animate-fadeIn">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Statistiques Académiques & Progression</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Indicateurs de réussite personnels et comparatifs</p>
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">{t('Statistiques Académiques & Progression')}</h2>
+                <p className="text-xs text-slate-500 mt-0.5">{t('Indicateurs de réussite personnels et comparatifs')}</p>
               </div>
               <button 
                 onClick={fetchDetailedStats}
                 className="px-3.5 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition-all text-slate-700 shadow-sm"
               >
-                🔄 Rafraîchir les données
+                🔄 {t('common.refresh')}
               </button>
             </div>
 
             {loadingDetailedStats ? (
               <div className="py-20 text-center text-slate-500 text-xs font-semibold animate-pulse">
-                Chargement de vos indicateurs...
+                {t('Chargement de vos indicateurs...')}
               </div>
             ) : detailedStats ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* Chart 1: Comparatif Moyenne Étudiant vs Classe */}
                 <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Comparatif de Moyenne</h3>
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">{t('Comparatif de Moyenne')}</h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={[
-                        { name: 'Ma Moyenne', note: detailedStats.moyenne_generale || 0, fill: '#6366f1' },
-                        { name: 'Moyenne de la Classe', note: detailedStats.moyenne_classe || 0, fill: '#94a3b8' }
+                        { name: t('Ma Moyenne'), note: detailedStats.moyenne_generale || 0, fill: '#6366f1' },
+                        { name: t('Moyenne de la Classe'), note: detailedStats.moyenne_classe || 0, fill: '#94a3b8' }
                       ]}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} domain={[0, 20]} />
                         <Tooltip 
                           contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
-                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, 'Moyenne']}
+                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, t('common.average')]}
                         />
                         <Bar dataKey="note" radius={[4, 4, 0, 0]} maxBarSize={60}>
                           {
@@ -1225,7 +1225,7 @@ export default function StudentDashboard() {
 
                 {/* Chart 2: Taux de Présence Global */}
                 <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl flex flex-col justify-between">
-                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Taux d'Assiduité / Présence</h3>
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">{t("Taux d'Assiduité / Présence")}</h3>
                   <div className="flex-1 flex flex-col items-center justify-center p-4">
                     <div className="relative flex items-center justify-center h-36 w-36 mb-4">
                       {/* SVG circle logic */}
@@ -1239,27 +1239,27 @@ export default function StudentDashboard() {
                       </svg>
                       <div className="absolute text-center">
                         <span className="text-2xl font-extrabold text-slate-800">{Number(detailedStats.taux_presence || 0).toFixed(1)}%</span>
-                        <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Présence</span>
+                        <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">{t('Présence')}</span>
                       </div>
                     </div>
-                    <p className="text-center text-xs text-slate-500 max-w-xs leading-relaxed">
-                      Votre assiduité est calculée sur la base des appels enregistrés par vos enseignants dans l'ensemble des modules.
+                    <p className="text-center text-xs text-slate-550 max-w-xs leading-relaxed">
+                      {t("Votre assiduité est calculée sur la base des appels enregistrés par vos enseignants dans l'ensemble des modules.")}
                     </p>
                   </div>
                 </div>
 
                 {/* Chart 3: Évolution des Notes par Module */}
                 <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl lg:col-span-2">
-                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Évolution de vos Notes par Module</h3>
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">{t('Évolution de vos Notes par Module')}</h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={detailedStats.evolution_notes || []}>
+                      <LineChart data={detailedStats.evolution_notes?.map(e => ({ ...e, module: t(e.module) })) || []}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="module" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} domain={[0, 20]} />
                         <Tooltip 
                           contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
-                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, 'Note']}
+                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, t('Note')]}
                         />
                         <Line type="monotone" dataKey="note" stroke="#ec4899" strokeWidth={3} dot={{ r: 4, stroke: '#ec4899', strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6 }} />
                       </LineChart>
@@ -1270,7 +1270,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="p-8 text-center text-slate-400 text-xs italic bg-white border border-slate-200/85 rounded-2xl">
-                Aucune donnée statistique disponible pour le moment.
+                {t('Aucune donnée statistique disponible pour le moment.')}
               </div>
             )}
           </div>

@@ -30,7 +30,8 @@ import {
 } from 'lucide-react';
 
 // Helper to split 3-hour slots into two 1h30 sessions
-const getDisplaySlots = (slots) => {
+const getDisplaySlots = (slots, t) => {
+  const translate = t || (k => k);
   const list = [];
   slots.forEach(slot => {
     if (!slot.start_time || !slot.end_time) {
@@ -40,7 +41,7 @@ const getDisplaySlots = (slots) => {
         sessionPart: 1,
         computed_start: '08:30',
         computed_end: '10:00',
-        displayTime: slot.time || 'Séance'
+        displayTime: slot.time ? translate(slot.time) : translate('Séance')
       });
       return;
     }
@@ -69,7 +70,7 @@ const getDisplaySlots = (slots) => {
         sessionPart: 1,
         computed_start: s1_start,
         computed_end: s1_end,
-        displayTime: `${slot.day} (${s1_start} - ${s1_end}) - Séance 1 (1h30)`
+        displayTime: `${translate(slot.day)} (${s1_start} - ${s1_end}) - ${translate('Séance')} 1 (1h30)`
       });
       list.push({
         ...slot,
@@ -77,7 +78,7 @@ const getDisplaySlots = (slots) => {
         sessionPart: 2,
         computed_start: s2_start,
         computed_end: s2_end,
-        displayTime: `${slot.day} (${s2_start} - ${s2_end}) - Séance 2 (1h30)`
+        displayTime: `${translate(slot.day)} (${s2_start} - ${s2_end}) - ${translate('Séance')} 2 (1h30)`
       });
     } else {
       // Fallback for non-3h slots
@@ -87,7 +88,7 @@ const getDisplaySlots = (slots) => {
         sessionPart: 1,
         computed_start: slot.start_time.substring(0, 5),
         computed_end: slot.end_time.substring(0, 5),
-        displayTime: `${slot.day} (${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)})`
+        displayTime: `${translate(slot.day)} (${slot.start_time.substring(0, 5)} - ${slot.end_time.substring(0, 5)})`
       });
     }
   });
@@ -329,7 +330,7 @@ export default function ProfessorDashboard() {
       slot.module_id && slot.module_id.toString() === selectedAttendanceModuleId.toString()
     );
     // Split 3-hour slots into two 1h30 sessions
-    const displaySlots = getDisplaySlots(slots);
+    const displaySlots = getDisplaySlots(slots, t);
     setFilteredTimetableSlots(displaySlots);
 
     if (displaySlots.length > 0) {
@@ -620,7 +621,7 @@ export default function ProfessorDashboard() {
     }
   }, [activeTab, selectedClassroomModuleId, selectedClassroomGroupId]);
 
-  const logbookDisplaySlots = getDisplaySlots(dbTimetables);
+  const logbookDisplaySlots = getDisplaySlots(dbTimetables, t);
 
   const handleLogbookSlotChange = (key) => {
     setSelectedLogbookSlotKey(key);
@@ -1112,23 +1113,23 @@ export default function ProfessorDashboard() {
         {(activeTab === 'grades' || activeTab === 'logbook') && (
           <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Groupe :</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('common.group')} :</span>
               <select 
                 value={selectedGroup} 
                 onChange={e => setSelectedGroup(e.target.value)}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
               >
-                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                {groups.map(g => <option key={g.id} value={g.id}>{t(g.name)}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Module :</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('common.module')} :</span>
               <select 
                 value={selectedModule} 
                 onChange={e => setSelectedModule(e.target.value)}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
               >
-                {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                {modules.map(m => <option key={m.id} value={m.id}>{t(m.name)}</option>)}
               </select>
             </div>
           </div>
@@ -1141,11 +1142,11 @@ export default function ProfessorDashboard() {
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-4">Étudiant</th>
+                    <th className="p-4">{t('Étudiant')}</th>
                     <th className="p-4 w-28 text-center">CC1 (20%)</th>
                     <th className="p-4 w-28 text-center">CC2 (20%)</th>
                     <th className="p-4 w-28 text-center">Examen (60%)</th>
-                    <th className="p-4 w-32 text-center">Moyenne Finale</th>
+                    <th className="p-4 w-32 text-center">{t('Moyenne Finale')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -1205,7 +1206,7 @@ export default function ProfessorDashboard() {
                 onClick={handleSaveGrades}
                 className="py-3 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center gap-2 shadow-md shadow-indigo-500/10"
               >
-                <Save className="h-4 w-4" /> Enregistrer les notes
+                <Save className="h-4 w-4" /> {t('Enregistrer les notes')}
               </button>
             </div>
           </div>
@@ -1217,18 +1218,18 @@ export default function ProfessorDashboard() {
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-6 items-center">
               {/* 1. Sélectionneur de Filière */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Filière :</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('common.filiere')} :</span>
                 <select 
                   value={selectedFiliereId}
                   onChange={e => setSelectedFiliereId(e.target.value)}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
                 >
                   {filieres.length === 0 ? (
-                    <option value="">Aucune filière</option>
+                    <option value="">{t('Aucune filière')}</option>
                   ) : (
                     filieres.map(f => (
                       <option key={f.id} value={f.id}>
-                        {f.name}
+                        {t(f.name)}
                       </option>
                     ))
                   )}
@@ -1237,18 +1238,18 @@ export default function ProfessorDashboard() {
 
               {/* 2. Sélectionneur de Groupe */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Groupe :</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('dashboard.group_title') || t('Groupe')} :</span>
                 <select 
                   value={selectedGroupId}
                   onChange={e => setSelectedGroupId(e.target.value)}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none"
                 >
                   {filteredGroups.length === 0 ? (
-                    <option value="">Aucun groupe</option>
+                    <option value="">{t('Aucun groupe')}</option>
                   ) : (
                     filteredGroups.map(g => (
                       <option key={g.id} value={g.id}>
-                        {g.name}
+                        {t(g.name)}
                       </option>
                     ))
                   )}
@@ -1257,18 +1258,18 @@ export default function ProfessorDashboard() {
 
               {/* 2.5. Sélectionneur de Matière (Module) */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Matière :</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('common.module')} :</span>
                 <select 
                   value={selectedAttendanceModuleId}
                   onChange={e => setSelectedAttendanceModuleId(e.target.value)}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none min-w-[150px]"
                 >
                   {filteredAttendanceModules.length === 0 ? (
-                    <option value="">Aucune matière</option>
+                    <option value="">{t('Aucune matière')}</option>
                   ) : (
                     filteredAttendanceModules.map(m => (
                       <option key={m.id} value={m.id}>
-                        {m.name}
+                        {t(m.name)}
                       </option>
                     ))
                   )}
@@ -1277,7 +1278,7 @@ export default function ProfessorDashboard() {
 
               {/* 3. Sélectionneur de Date */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date de l'appel :</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('Date de l\'appel') || t('Date')} :</span>
                 <input 
                   type="date" 
                   value={attendanceDate}
@@ -1288,18 +1289,18 @@ export default function ProfessorDashboard() {
 
               {/* 4. Sélectionneur de Séance */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Séance :</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('Séance') || t('Session')} :</span>
                 <select 
                   value={selectedTimetableKey}
                   onChange={e => setSelectedTimetableKey(e.target.value)}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:bg-white focus:border-indigo-500 outline-none min-w-[260px]"
                 >
                   {filteredTimetableSlots.length === 0 ? (
-                    <option value="">Aucune séance</option>
+                    <option value="">{t('Aucune séance')}</option>
                   ) : (
                     filteredTimetableSlots.map(slot => (
                       <option key={slot.displayId} value={slot.displayId}>
-                        {slot.displayTime}
+                        {t(slot.displayTime)}
                       </option>
                     ))
                   )}
@@ -1311,9 +1312,9 @@ export default function ProfessorDashboard() {
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-4">Étudiant</th>
-                    <th className="p-4">Statut</th>
-                    <th className="p-4 text-right">Marquer comme Absent</th>
+                    <th className="p-4">{t('common.student')}</th>
+                    <th className="p-4">{t('common.status') || t('Statut')}</th>
+                    <th className="p-4 text-right">{t('Marquer comme Absent')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -1324,7 +1325,7 @@ export default function ProfessorDashboard() {
                         <span className={`inline-block px-2 py-0.5 rounded border text-[9px] font-bold uppercase ${
                           student.absent ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'
                         }`}>
-                          {student.absent ? 'Absent' : 'Présent'}
+                          {student.absent ? t('Absent') : t('Présent')}
                         </span>
                       </td>
                       <td className="p-4 text-right">
@@ -1346,13 +1347,13 @@ export default function ProfessorDashboard() {
                 onClick={handleExportAttendanceCSV}
                 className="py-3 px-5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors flex items-center gap-2 shadow-sm"
               >
-                <Download className="h-4 w-4 text-emerald-600" /> Télécharger la feuille d'appel (CSV)
+                <Download className="h-4 w-4 text-emerald-600" /> {t('Télécharger la feuille d\'appel (CSV)')}
               </button>
               <button 
                 onClick={handleSaveAttendance}
                 className="py-3 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center gap-2 shadow-md shadow-indigo-500/10"
               >
-                <Save className="h-4 w-4" /> Valider la feuille d'appel
+                <Save className="h-4 w-4" /> {t('Valider la feuille d\'appel')}
               </button>
             </div>
           </div>
@@ -1374,22 +1375,22 @@ export default function ProfessorDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Rooms List */}
               <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">Disponibilité des Salles</h3>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">{t('Disponibilité des Salles')}</h3>
                 <div className="space-y-4">
                   {rooms.map(room => (
                     <div key={room.id} className="flex justify-between items-center p-4 rounded-xl bg-slate-50 border border-slate-200/60">
                       <div>
-                        <span className="block font-bold text-slate-800 text-xs">{room.name}</span>
-                        <span className="text-[10px] text-slate-500 mt-1 block">Type: {room.type} | Capacité: {room.capacity} places</span>
+                        <span className="block font-bold text-slate-800 text-xs">{t(room.name)}</span>
+                        <span className="text-[10px] text-slate-500 mt-1 block">{t('Type')} : {t(room.type)} | {t('Capacité:')} {t('{{capacity}} places', { capacity: room.capacity })}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] font-bold text-slate-500 block mb-1">Créneaux réservés :</span>
+                        <span className="text-[10px] font-bold text-slate-500 block mb-1">{t('Créneaux réservés :')}</span>
                         {room.reservedSlots.length > 0 ? (
                           room.reservedSlots.map(s => (
                             <span key={s} className="inline-block px-1.5 py-0.5 rounded bg-rose-50 border border-rose-100 text-rose-600 text-[8px] font-bold mr-1">{s}</span>
                           ))
                         ) : (
-                          <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-100 text-emerald-600 text-[8px] font-bold">Aucune réservation</span>
+                          <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-100 text-emerald-600 text-[8px] font-bold">{t('Aucune réservation')}</span>
                         )}
                       </div>
                     </div>
@@ -1399,10 +1400,10 @@ export default function ProfessorDashboard() {
 
               {/* Reservation Form */}
               <form onSubmit={handleReserve} className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Réserver une salle</h3>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">{t('Réserver une salle')}</h3>
                 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Date</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Date')}</label>
                   <input 
                     type="date"
                     value={reserveForm.date}
@@ -1412,7 +1413,7 @@ export default function ProfessorDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Créneau horaire</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Créneau horaire')}</label>
                   <select
                     value={reserveForm.slot}
                     onChange={e => setReserveForm({ ...reserveForm, slot: e.target.value })}
@@ -1426,18 +1427,18 @@ export default function ProfessorDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Salle</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Salle')}</label>
                   <select
                     value={reserveForm.roomId}
                     onChange={e => setReserveForm({ ...reserveForm, roomId: parseInt(e.target.value) })}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 outline-none focus:bg-white focus:border-indigo-500"
                   >
-                    {rooms.map(r => <option key={r.id} value={r.id}>{r.name} ({r.type})</option>)}
+                    {rooms.map(r => <option key={r.id} value={r.id}>{t(r.name)} ({t(r.type)})</option>)}
                   </select>
                 </div>
 
                 <button type="submit" className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm">
-                  Confirmer la réservation
+                  {t('Confirmer la réservation')}
                 </button>
               </form>
             </div>
@@ -1449,29 +1450,29 @@ export default function ProfessorDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
             {/* List entries */}
             <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">Séances Consignées</h3>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">{t('Séances Consignées')}</h3>
               <div className="space-y-4">
                 {logbookEntries.length === 0 ? (
-                  <p className="text-slate-500 text-xs text-center py-6">Aucune séance consignée.</p>
+                  <p className="text-slate-500 text-xs text-center py-6">{t('Aucune séance consignée.')}</p>
                 ) : (
                   logbookEntries.map(entry => (
                     <div key={entry.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
                       <div className="flex justify-between items-center border-b border-slate-200/60 pb-2 mb-3">
                         <div>
                           <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
-                            {entry.timetable?.module?.name || 'Matière'}
+                            {entry.timetable?.module?.name ? t(entry.timetable.module.name) : t('Matière')}
                           </span>
                           <h4 className="text-xs font-bold text-slate-900 mt-1">{entry.objective}</h4>
                         </div>
                         <div className="text-right">
                           <span className="block text-[10px] text-slate-450">{entry.date}</span>
                           <span className="inline-block px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600 text-[8px] font-bold mt-1 shadow-sm">
-                            {entry.start_time ? entry.start_time.substring(0, 5) : ''} - {entry.end_time ? entry.end_time.substring(0, 5) : ''} ({entry.nature})
+                            {entry.start_time ? entry.start_time.substring(0, 5) : ''} - {entry.end_time ? entry.end_time.substring(0, 5) : ''} ({t(entry.nature)})
                           </span>
                         </div>
                       </div>
                       {entry.timetable?.group?.name && (
-                        <p className="text-slate-550 text-[10px] font-semibold">Classe : {entry.timetable.group.name}</p>
+                        <p className="text-slate-550 text-[10px] font-semibold">{t('Classe')} : {t(entry.timetable.group.name)}</p>
                       )}
                     </div>
                   ))
@@ -1481,11 +1482,11 @@ export default function ProfessorDashboard() {
 
             {/* New Entry Form */}
             <form onSubmit={handleAddLogbook} className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">Consigner une Séance</h3>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">{t('Consigner une Séance')}</h3>
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Date</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Date')}</label>
                   <input 
                     type="date"
                     disabled
@@ -1494,22 +1495,22 @@ export default function ProfessorDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nature de la séance</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Nature de la séance')}</label>
                   <select
                     value={newLogbook.nature}
                     onChange={e => setNewLogbook({ ...newLogbook, nature: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 outline-none focus:bg-white focus:border-indigo-500"
                   >
-                    <option value="Cours">Cours</option>
-                    <option value="TD">TD</option>
-                    <option value="TP">TP</option>
+                    <option value="Cours">{t('Cours')}</option>
+                    <option value="TD">{t('TD')}</option>
+                    <option value="TP">{t('TP')}</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Heure de début</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Heure de début')}</label>
                   <input 
                     type="time"
                     value={newLogbook.start_time}
@@ -1518,7 +1519,7 @@ export default function ProfessorDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Heure de fin</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Heure de fin')}</label>
                   <input 
                     type="time"
                     value={newLogbook.end_time}
@@ -1529,18 +1530,18 @@ export default function ProfessorDashboard() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Créneau d'emploi du temps</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t("Créneau d'emploi du temps")}</label>
                 <select
                   value={selectedLogbookSlotKey}
                   onChange={e => handleLogbookSlotChange(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-650 outline-none focus:bg-white focus:border-indigo-500"
                 >
                   {logbookDisplaySlots.length === 0 ? (
-                    <option value="">Aucun créneau disponible</option>
+                    <option value="">{t('Aucun créneau disponible')}</option>
                   ) : (
                     logbookDisplaySlots.map(slot => (
                       <option key={slot.displayId} value={slot.displayId}>
-                        {slot.displayTime} | {slot.module} ({slot.group})
+                        {t(slot.displayTime)} | {t(slot.module)} ({t(slot.group)})
                       </option>
                     ))
                   )}
@@ -1548,18 +1549,18 @@ export default function ProfessorDashboard() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sujet / Objectif (min. 10 caractères)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Sujet / Objectif (min. 10 caractères)')}</label>
                 <textarea 
                   rows="4"
                   value={newLogbook.objective}
                   onChange={e => setNewLogbook({ ...newLogbook, objective: e.target.value })}
-                  placeholder="Détails du cours et exercices à préparer pour la séance suivante..."
+                  placeholder={t("Détails du cours et exercices à préparer pour la séance suivante...")}
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 resize-none leading-relaxed"
                 />
               </div>
 
               <button type="submit" className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm">
-                Ajouter la séance
+                {t('Ajouter la séance')}
               </button>
             </form>
           </div>
@@ -1574,11 +1575,11 @@ export default function ProfessorDashboard() {
             <div className="space-y-6 animate-fadeIn">
               <div className="flex justify-between items-center mb-2">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Mon Emploi du Temps Hebdomadaire</h2>
-                  <p className="text-xs text-slate-550 mt-0.5">Retrouvez vos séances et classes planifiées</p>
+                  <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">{t('Mon Emploi du Temps Hebdomadaire')}</h2>
+                  <p className="text-xs text-slate-550 mt-0.5">{t('Retrouvez vos séances et classes planifiées')}</p>
                 </div>
                 <span className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-                  Semestre Actuel
+                  {t('Semestre Actuel')}
                 </span>
               </div>
 
@@ -1587,7 +1588,7 @@ export default function ProfessorDashboard() {
                   <table className="w-full min-w-[800px] border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                        <th className="p-4 w-28 text-left">Jour</th>
+                        <th className="p-4 w-28 text-left">{t('Jour')}</th>
                         <th className="p-4 border-l border-slate-100">08:30 - 10:00</th>
                         <th className="p-4 border-l border-slate-100">10:30 - 12:00</th>
                         <th className="p-4 border-l border-slate-100">14:00 - 15:30</th>
@@ -1599,7 +1600,7 @@ export default function ProfessorDashboard() {
                         const dayData = groupedTimetables.find(d => d.day === day);
                         return (
                           <tr key={day} className="hover:bg-slate-50/30 transition-colors">
-                            <td className="p-4 font-bold text-slate-800 bg-slate-50/30 w-28">{day}</td>
+                            <td className="p-4 font-bold text-slate-800 bg-slate-50/30 w-28">{t(day)}</td>
                             {timeRanges.map(timeRange => {
                               const [start, end] = timeRange.split('-');
                               const matchingSlot = dayData?.slots?.find(s => {
@@ -1614,31 +1615,31 @@ export default function ProfessorDashboard() {
                                       <div className="space-y-1">
                                         <div className="flex justify-between items-start">
                                           <span className="px-1.5 py-0.5 rounded font-extrabold text-[9px] uppercase bg-indigo-600 text-white">
-                                            {matchingSlot.module_code || 'COURS'}
+                                            {matchingSlot.module_code || t('COURS')}
                                           </span>
                                           <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1">
                                             <Clock className="h-3 w-3" />
                                             {matchingSlot.time || `${start} - ${end}`}
                                           </span>
                                         </div>
-                                        <h4 className="font-bold text-slate-800 text-[11px] truncate mt-1" title={matchingSlot.module}>
-                                          {matchingSlot.module}
+                                        <h4 className="font-bold text-slate-800 text-[11px] truncate mt-1" title={t(matchingSlot.module)}>
+                                          {t(matchingSlot.module)}
                                         </h4>
                                       </div>
                                       <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
                                         <span className="truncate flex items-center gap-1">
                                           <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                                          {matchingSlot.room || 'N/A'}
+                                          {t(matchingSlot.room) || 'N/A'}
                                         </span>
                                         <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[8px] font-extrabold text-slate-650 flex items-center gap-1">
                                           <Users className="h-3 w-3 text-slate-400" />
-                                          {matchingSlot.group || 'Classe'}
+                                          {t(matchingSlot.group) || t('Classe')}
                                         </span>
                                       </div>
                                     </div>
                                   ) : (
                                     <div className="w-full h-full rounded-xl border border-dashed border-slate-100 bg-slate-50/10 flex items-center justify-center text-[10px] text-slate-400 italic">
-                                      Aucun cours
+                                      {t('Aucun cours')}
                                     </div>
                                   )}
                                 </td>
@@ -1663,25 +1664,25 @@ export default function ProfessorDashboard() {
               <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-2">
                   <Search className="h-4 w-4 text-indigo-500" />
-                  Filtrage Espace Cours
+                  {t('Filtrage Espace Cours')}
                 </h3>
 
                 {/* 1. Sélection de la Filière */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">1. Filière</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('1. Filière')}</label>
                   <select
                     value={selectedClassroomFiliereId}
                     onChange={e => setSelectedClassroomFiliereId(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 outline-none focus:bg-white focus:border-indigo-500 transition-all font-semibold"
                   >
                     {filieres.length === 0 ? (
-                      <option value="">Aucune filière disponible</option>
+                      <option value="">{t('Aucune filière disponible')}</option>
                     ) : (
                       <>
-                        <option value="">Choisir une filière...</option>
+                        <option value="">{t('Choisir une filière...')}</option>
                         {filieres.map(fil => (
                           <option key={fil.id} value={fil.id}>
-                            {fil.name}
+                            {t(fil.name)}
                           </option>
                         ))}
                       </>
@@ -1691,7 +1692,7 @@ export default function ProfessorDashboard() {
 
                 {/* 2. Sélection du Groupe (cascadé) */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">2. Groupe / Classe</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('2. Groupe / Classe')}</label>
                   <select
                     value={selectedClassroomGroupId}
                     onChange={e => setSelectedClassroomGroupId(e.target.value)}
@@ -1703,15 +1704,15 @@ export default function ProfessorDashboard() {
                     }`}
                   >
                     {!selectedClassroomFiliereId ? (
-                      <option value="">Sélectionnez d'abord une filière</option>
+                      <option value="">{t("Sélectionnez d'abord une filière")}</option>
                     ) : filteredClassroomGroups.length === 0 ? (
-                      <option value="">Aucun groupe trouvé</option>
+                      <option value="">{t('Aucun groupe trouvé')}</option>
                     ) : (
                       <>
-                        <option value="">Choisir un groupe...</option>
+                        <option value="">{t('Choisir un groupe...')}</option>
                         {filteredClassroomGroups.map(grp => (
                           <option key={grp.id} value={grp.id}>
-                            {grp.name}
+                            {t(grp.name)}
                           </option>
                         ))}
                       </>
@@ -1721,7 +1722,7 @@ export default function ProfessorDashboard() {
 
                 {/* 3. Sélection de la Matière (cascadée) */}
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">3. Matière / Module</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">{t('3. Matière / Module')}</label>
                   <select
                     value={selectedClassroomModuleId}
                     onChange={e => setSelectedClassroomModuleId(e.target.value)}
@@ -1733,15 +1734,15 @@ export default function ProfessorDashboard() {
                     }`}
                   >
                     {!selectedClassroomGroupId ? (
-                      <option value="">Sélectionnez d'abord un groupe</option>
+                      <option value="">{t("Sélectionnez d'abord un groupe")}</option>
                     ) : filteredClassroomModules.length === 0 ? (
-                      <option value="">Aucune matière trouvée</option>
+                      <option value="">{t('Aucune matière trouvée')}</option>
                     ) : (
                       <>
-                        <option value="">Choisir une matière...</option>
+                        <option value="">{t('Choisir une matière...')}</option>
                         {filteredClassroomModules.map(mod => (
                           <option key={mod.id} value={mod.id}>
-                            {mod.name}
+                            {t(mod.name)}
                           </option>
                         ))}
                       </>
@@ -1756,9 +1757,9 @@ export default function ProfessorDashboard() {
               {!selectedClassroomModuleId ? (
                 <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center shadow-sm flex flex-col items-center justify-center min-h-[400px]">
                   <Layers className="h-12 w-12 text-indigo-500/30 mb-4 animate-pulse" />
-                  <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-2">Sélectionnez une Matière</h3>
-                  <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
-                    Veuillez sélectionner successivement une Filière, puis un Groupe et enfin une Matière dans le panneau de gauche pour accéder à l'espace de cours.
+                  <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-2">{t('Sélectionnez une Matière')}</h3>
+                  <p className="text-xs text-slate-550 max-w-sm leading-relaxed">
+                    {t('Veuillez sélectionner successivement une Filière, puis un Groupe et enfin une Matière dans le panneau de gauche pour accéder à l\'espace de cours.')}
                   </p>
                 </div>
               ) : (
@@ -1768,21 +1769,21 @@ export default function ProfessorDashboard() {
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
                       {editingAnnouncement ? (
                         <>
-                          <Edit className="h-4 w-4 text-amber-500 animate-pulse" /> Modifier l'annonce / support de cours
+                          <Edit className="h-4 w-4 text-amber-500 animate-pulse" /> {t('Modifier l\'annonce / support de cours')}
                         </>
                       ) : (
                         <>
-                          <Plus className="h-4 w-4 text-indigo-500" /> Publier un support de cours / annonce
+                          <Plus className="h-4 w-4 text-indigo-500" /> {t('Publier un support de cours / annonce')}
                         </>
                       )}
                     </h3>
                     
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Titre de l'annonce</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Titre de l\'annonce')}</label>
                         <input
                           type="text"
-                          placeholder="Ex: Chapitre 3 : Architecture REST & Routage"
+                          placeholder={t("Ex: Chapitre 3 : Architecture REST & Routage")}
                           value={announcementForm.title}
                           onChange={e => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
                           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 transition-all"
@@ -1790,10 +1791,10 @@ export default function ProfessorDashboard() {
                       </div>
                       
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Description / Contenu textuel</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t('Description / Contenu textuel')}</label>
                         <textarea
                           rows="3"
-                          placeholder="Saisissez les détails de l'annonce ou la description du document..."
+                          placeholder={t("Saisissez les détails de l'annonce ou la description du document...")}
                           value={announcementForm.content}
                           onChange={e => setAnnouncementForm({ ...announcementForm, content: e.target.value })}
                           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 outline-none focus:bg-white focus:border-indigo-500 resize-none transition-all"
@@ -1802,7 +1803,7 @@ export default function ProfessorDashboard() {
 
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                          {editingAnnouncement ? "Remplacer le fichier joint (optionnel)" : "Fichier joint (PDF, PPTX, ZIP, Images - Max 5Mo)"}
+                          {editingAnnouncement ? t("Remplacer le fichier joint (optionnel)") : t("Fichier joint (PDF, PPTX, ZIP, Images - Max 5Mo)")}
                         </label>
                         <div className="relative border border-dashed border-slate-300 hover:border-indigo-500 rounded-xl bg-slate-50 hover:bg-slate-100/50 p-6 transition-colors cursor-pointer flex flex-col items-center justify-center">
                           <input
@@ -1814,7 +1815,7 @@ export default function ProfessorDashboard() {
                           />
                           <Paperclip className="h-5 w-5 text-slate-400 mb-2" />
                           <span className="text-[10px] font-bold text-slate-500 text-center">
-                            {attachedFile ? attachedFile.name : editingAnnouncement && editingAnnouncement.file_name ? `Fichier actuel : ${editingAnnouncement.file_name} (cliquez pour remplacer)` : "Cliquez ou glissez un fichier ici pour le joindre"}
+                            {attachedFile ? attachedFile.name : editingAnnouncement && editingAnnouncement.file_name ? `${t('Fichier actuel :')} ${editingAnnouncement.file_name} (${t('cliquez pour remplacer')})` : t("Cliquez ou glissez un fichier ici pour le joindre")}
                           </span>
                           {attachedFile && (
                             <span className="text-[9px] font-extrabold text-indigo-600 mt-1.5 uppercase tracking-wider">
@@ -1833,7 +1834,7 @@ export default function ProfessorDashboard() {
                           className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                         />
                         <label htmlFor="allow_student_attachments" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
-                          Autoriser les étudiants à ajouter des pièces jointes (fichiers/rendus)
+                          {t('Autoriser les étudiants à ajouter des pièces jointes (fichiers/rendus)')}
                         </label>
                       </div>
                     </div>
@@ -1846,21 +1847,21 @@ export default function ProfessorDashboard() {
                           className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
                         >
                           <X className="h-3.5 w-3.5" />
-                          Annuler
+                          {t('Annuler')}
                         </button>
                       )}
                       <button
                         type="submit"
                         className={`px-5 py-2.5 ${editingAnnouncement ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'} text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2`}
                       >
-                        {editingAnnouncement ? 'Enregistrer les modifications' : "Publier l'Annonce"}
+                        {editingAnnouncement ? t('Enregistrer les modifications') : t("Publier l'Annonce")}
                       </button>
                     </div>
                   </form>
 
                   {/* Announcements Feed list */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Fil d'actualité & Supports</h3>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">{t('Fil d\'actualité & Supports')}</h3>
                     
                     {isAnnouncementsLoading ? (
                       <div className="space-y-4">
@@ -1874,7 +1875,7 @@ export default function ProfessorDashboard() {
                       </div>
                     ) : classroomAnnouncements.length === 0 ? (
                       <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-500 text-xs italic shadow-sm shadow-slate-100/50">
-                        Aucune annonce ou support de cours publié pour ce module.
+                        {t('Aucune annonce ou support de cours publié pour ce module.')}
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -1891,16 +1892,16 @@ export default function ProfessorDashboard() {
                                     </span>
                                     {isEdited && (
                                       <span className="text-[9px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 uppercase tracking-wider">
-                                        Modifié
+                                        {t('Modifié')}
                                       </span>
                                     )}
                                     {ann.allow_student_attachments ? (
                                       <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">
-                                        Rendus autorisés
+                                        {t('Rendus autorisés')}
                                       </span>
                                     ) : (
                                       <span className="text-[9px] text-slate-500 font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-250 uppercase tracking-wider">
-                                        Rendus désactivés
+                                        {t('Rendus désactivés')}
                                       </span>
                                     )}
                                   </div>
@@ -1909,14 +1910,14 @@ export default function ProfessorDashboard() {
                                   <button
                                     onClick={() => startEditAnnouncement(ann)}
                                     className="p-1.5 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all border border-transparent hover:border-amber-150"
-                                    title="Modifier cette annonce"
+                                    title={t("Modifier cette annonce")}
                                   >
                                     <Edit className="h-3.5 w-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteAnnouncement(ann.id)}
                                     className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-150"
-                                    title="Supprimer cette annonce"
+                                    title={t("Supprimer cette annonce")}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -1929,13 +1930,13 @@ export default function ProfessorDashboard() {
                                 <div className="mt-4 pt-4 border-t border-slate-100">
                                   <div className="flex items-center justify-between mb-3">
                                     <span className="text-[10px] font-bold text-indigo-650 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-100 uppercase tracking-wider">
-                                      Pièces jointes des étudiants ({ann.student_attachments?.length || 0})
+                                      {t('Pièces jointes des étudiants')} ({ann.student_attachments?.length || 0})
                                     </span>
                                   </div>
                                   {ann.student_attachments && ann.student_attachments.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                       {ann.student_attachments.map(att => {
-                                        const studentName = att.user ? `${att.user.first_name || ''} ${att.user.last_name || ''}` : 'Étudiant';
+                                        const studentName = att.user ? `${att.user.first_name || ''} ${att.user.last_name || ''}` : t('Étudiant');
                                         const fileInfo = getFileExtensionInfo(att.file_name);
                                         const fileUrl = att.file_path.startsWith('http') ? att.file_path : `${storageBaseUrl}/${att.file_path}`;
                                         const uploadDate = new Date(att.created_at).toLocaleDateString('fr-FR', {
@@ -1970,7 +1971,7 @@ export default function ProfessorDashboard() {
                                       })}
                                     </div>
                                   ) : (
-                                    <p className="text-[11px] text-slate-450 italic">Aucun étudiant n'a encore ajouté de pièce jointe.</p>
+                                    <p className="text-[11px] text-slate-450 italic">{t("Aucun étudiant n'a encore ajouté de pièce jointe.")}</p>
                                   )}
                                 </div>
                               )}
@@ -1994,24 +1995,24 @@ export default function ProfessorDashboard() {
               <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm shadow-slate-100/50">
                 <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-indigo-500" />
-                  Nouvelle demande
+                  {t('Nouvelle demande')}
                 </h2>
                 <p className="text-slate-550 text-xs mb-6">
-                  Choisissez le document requis. Les ordres de mission nécessitent des informations supplémentaires.
+                  {t('Choisissez le document requis. Les ordres de mission nécessitent des informations supplémentaires.')}
                 </p>
 
                 <form onSubmit={handleRequestDocument} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Type de document
+                      {t('Type de document')}
                     </label>
                     <select
                       value={docType}
                       onChange={(e) => setDocType(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium focus:bg-white focus:border-indigo-500 outline-none"
                     >
-                      <option value="attestation_travail">Attestation de Travail</option>
-                      <option value="ordre_mission">Ordre de Mission</option>
+                      <option value="attestation_travail">{t('Attestation de Travail')}</option>
+                      <option value="ordre_mission">{t('Ordre de Mission')}</option>
                     </select>
                   </div>
 
@@ -2019,12 +2020,12 @@ export default function ProfessorDashboard() {
                     <div className="space-y-4 pt-2 border-t border-slate-100 animate-fadeIn">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                          Destination
+                          {t('Destination')}
                         </label>
                         <input
                           type="text"
                           required
-                          placeholder="Ex: Rabat, Université Mohammed V"
+                          placeholder={t("Ex: Rabat, Université Mohammed V")}
                           value={missionForm.destination}
                           onChange={(e) => setMissionForm({ ...missionForm, destination: e.target.value })}
                           className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 placeholder-slate-400 focus:bg-white focus:border-indigo-500 outline-none"
@@ -2034,7 +2035,7 @@ export default function ProfessorDashboard() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                            Date de début
+                            {t('Date de début')}
                           </label>
                           <input
                             type="date"
@@ -2046,7 +2047,7 @@ export default function ProfessorDashboard() {
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                            Date de fin
+                            {t('Date de fin')}
                           </label>
                           <input
                             type="date"
@@ -2060,12 +2061,12 @@ export default function ProfessorDashboard() {
 
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                          Motif de la mission
+                          {t('Motif de la mission')}
                         </label>
                         <textarea
                           required
                           rows="3"
-                          placeholder="Décrivez brièvement le but de votre mission..."
+                          placeholder={t("Décrivez brièvement le but de votre mission...")}
                           value={missionForm.reason}
                           onChange={(e) => setMissionForm({ ...missionForm, reason: e.target.value })}
                           className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 placeholder-slate-400 focus:bg-white focus:border-indigo-500 outline-none resize-none"
@@ -2077,13 +2078,13 @@ export default function ProfessorDashboard() {
                   {/* File Attachment Input */}
                   <div className="space-y-1.5 pt-2 border-t border-slate-100">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                      Pièce jointe (PDF, Image - Optionnel)
+                      {t('Pièce jointe (PDF, Image - Optionnel)')}
                     </label>
                     <div className="flex items-center gap-3">
                       <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-350 cursor-pointer transition-all duration-200">
                         <Paperclip className="h-3.5 w-3.5 text-slate-500" />
                         <span className="text-[11px] text-slate-650 font-medium truncate">
-                          {docAttachedFile ? docAttachedFile.name : "Sélectionner un fichier"}
+                          {docAttachedFile ? docAttachedFile.name : t("Sélectionner un fichier")}
                         </span>
                         <input
                           type="file"
@@ -2105,7 +2106,7 @@ export default function ProfessorDashboard() {
                             if (docFileInputRef.current) docFileInputRef.current.value = '';
                           }}
                           className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 transition-all"
-                          title="Supprimer le fichier"
+                          title={t("Supprimer le fichier")}
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -2117,7 +2118,7 @@ export default function ProfessorDashboard() {
                     type="submit"
                     className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-md shadow-indigo-500/10 flex items-center justify-center gap-2"
                   >
-                    Soumettre la demande
+                    {t('Soumettre la demande')}
                   </button>
                 </form>
               </div>
@@ -2127,10 +2128,10 @@ export default function ProfessorDashboard() {
             <div className="lg:col-span-7 space-y-6">
               <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm shadow-slate-100/50">
                 <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider mb-2">
-                  Historique des demandes
+                  {t('Historique des demandes')}
                 </h2>
                 <p className="text-slate-550 text-xs mb-6">
-                  Suivez le statut de validation et téléchargez vos attestations approuvées.
+                  {t('Suivez le statut de validation et téléchargez vos attestations approuvées.')}
                 </p>
 
                 {isDocsLoading ? (
@@ -2144,37 +2145,37 @@ export default function ProfessorDashboard() {
                   </div>
                 ) : docRequests.length === 0 ? (
                   <div className="border border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-500 text-xs italic">
-                    Aucune demande de document enregistrée.
+                    {t('Aucune demande de document enregistrée.')}
                   </div>
                 ) : (
                   <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
                     {docRequests.map(doc => {
-                      const displayTitle = doc.type === 'attestation_travail' ? 'Attestation de Travail' :
-                                           doc.type === 'ordre_mission' ? 'Ordre de Mission' : doc.type;
-                      const dateStr = doc.created_at ? new Date(doc.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Récemment';
+                      const displayTitle = doc.type === 'attestation_travail' ? t('Attestation de Travail') :
+                                           doc.type === 'ordre_mission' ? t('Ordre de Mission') : t(doc.type);
+                      const dateStr = doc.created_at ? new Date(doc.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : t('Récemment');
 
                       return (
                         <div key={doc.id} className="border border-slate-150 rounded-xl p-4 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all duration-200">
                           <div className="flex justify-between items-start gap-4 mb-2">
                             <div>
                               <h4 className="text-xs font-bold text-slate-900">{displayTitle}</h4>
-                              <p className="text-[10px] text-slate-450 mt-0.5">Demandé le {dateStr}</p>
+                              <p className="text-[10px] text-slate-450 mt-0.5">{t('Demandé le')} {dateStr}</p>
                             </div>
                             
                             <div>
                               {doc.status === 'pending' && (
                                 <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-50 border border-amber-100 text-amber-600">
-                                  En attente
+                                  {t('En attente')}
                                 </span>
                               )}
                               {doc.status === 'approved' && (
                                 <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-50 border border-emerald-100 text-emerald-600">
-                                  Approuvée
+                                  {t('Approuvée')}
                                 </span>
                               )}
                               {doc.status === 'rejected' && (
                                 <span className="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-rose-50 border border-rose-100 text-rose-600">
-                                  Rejetée
+                                  {t('Rejetée')}
                                 </span>
                               )}
                             </div>
@@ -2183,9 +2184,9 @@ export default function ProfessorDashboard() {
                           {/* Extra details for Mission order */}
                           {doc.type === 'ordre_mission' && (
                             <div className="mt-3 p-2.5 bg-slate-100/60 rounded-lg text-[11px] text-slate-650 space-y-1 border border-slate-150">
-                              <div><span className="font-semibold text-slate-800">Destination :</span> {doc.destination}</div>
-                              <div><span className="font-semibold text-slate-800">Période :</span> du {doc.start_date} au {doc.end_date}</div>
-                              <div><span className="font-semibold text-slate-800">Motif :</span> {doc.motif}</div>
+                              <div><span className="font-semibold text-slate-800">{t('Destination')} :</span> {doc.destination}</div>
+                              <div><span className="font-semibold text-slate-800">{t('Période')} :</span> {t('du')} {doc.start_date} {t('au')} {doc.end_date}</div>
+                              <div><span className="font-semibold text-slate-800">{t('Motif')} :</span> {doc.motif}</div>
                             </div>
                           )}
 
@@ -2198,9 +2199,9 @@ export default function ProfessorDashboard() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="hover:underline truncate max-w-[200px]"
-                                title="Ouvrir la pièce jointe"
+                                title={t("Ouvrir la pièce jointe")}
                               >
-                                {doc.attachment_name || "Pièce jointe"}
+                                {doc.attachment_name || t("Pièce jointe")}
                               </a>
                             </div>
                           )}
@@ -2208,7 +2209,7 @@ export default function ProfessorDashboard() {
                           {/* Rejection reason if rejected */}
                           {doc.status === 'rejected' && doc.rejection_reason && (
                             <div className="mt-3 p-2.5 bg-rose-50/50 border border-rose-100 text-[11px] text-rose-600 rounded-lg">
-                              <span className="font-bold">Motif de refus :</span> {doc.rejection_reason}
+                              <span className="font-bold">{t('Motif de refus')} :</span> {doc.rejection_reason}
                             </div>
                           )}
 
@@ -2223,7 +2224,7 @@ export default function ProfessorDashboard() {
                                 className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 text-indigo-600 text-[10px] font-bold flex items-center gap-1.5 transition-all"
                               >
                                 <Download className="h-3.5 w-3.5" />
-                                Télécharger le PDF
+                                {t('Télécharger le PDF')}
                               </button>
                             </div>
                           )}
@@ -2242,27 +2243,27 @@ export default function ProfessorDashboard() {
           <div className="space-y-6 animate-fadeIn">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Analyses Pédagogiques & Absences</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Indicateurs de réussite de vos classes et participation</p>
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">{t('Analyses Pédagogiques & Absences')}</h2>
+                <p className="text-xs text-slate-500 mt-0.5">{t('Indicateurs de réussite de vos classes et participation')}</p>
               </div>
               <button 
                 onClick={fetchDetailedStats}
                 className="px-3.5 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition-all text-slate-700 shadow-sm"
               >
-                🔄 Rafraîchir les données
+                🔄 {t('Rafraîchir les données')}
               </button>
             </div>
 
             {loadingDetailedStats ? (
               <div className="py-20 text-center text-slate-500 text-xs font-semibold animate-pulse">
-                Chargement de vos statistiques...
+                {t('Chargement de vos statistiques...')}
               </div>
             ) : detailedStats ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* Chart 1: Moyenne Générale par Module */}
                 <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Moyenne des Notes par Module Enseigné</h3>
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">{t('Moyenne des Notes par Module Enseigné')}</h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={detailedStats.moyenne_par_module || []}>
@@ -2271,7 +2272,7 @@ export default function ProfessorDashboard() {
                         <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} domain={[0, 20]} />
                         <Tooltip 
                           contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
-                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, 'Moyenne']}
+                          formatter={(value) => [`${Number(value).toFixed(2)} / 20`, t('Moyenne')]}
                         />
                         <Bar dataKey="moyenne" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={45} />
                       </BarChart>
@@ -2281,7 +2282,7 @@ export default function ProfessorDashboard() {
 
                 {/* Chart 2: Distribution des Notes par Palier */}
                 <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl flex flex-col justify-between">
-                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Répartition des Notes par Palier</h3>
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">{t('Répartition des Notes par Palier')}</h3>
                   <div className="flex-1 h-56 flex items-center justify-center relative">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -2321,7 +2322,7 @@ export default function ProfessorDashboard() {
 
                 {/* Chart 3: Taux de Présence par Classe */}
                 <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl lg:col-span-2">
-                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">Taux de Présence Moyen par Groupe d'Étudiants</h3>
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-6">{t('Taux de Présence Moyen par Groupe d\'Étudiants')}</h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={detailedStats.presence_par_classe || []}>
@@ -2330,7 +2331,7 @@ export default function ProfessorDashboard() {
                         <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} unit="%" />
                         <Tooltip 
                           contentStyle={{ background: '#0f172a', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
-                          formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Présence']}
+                          formatter={(value) => [`${Number(value).toFixed(1)}%`, t('Présence')]}
                         />
                         <Bar dataKey="taux_presence" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={45} />
                       </BarChart>
@@ -2341,7 +2342,7 @@ export default function ProfessorDashboard() {
               </div>
             ) : (
               <div className="p-8 text-center text-slate-400 text-xs italic bg-white border border-slate-200/85 rounded-2xl">
-                Aucune donnée statistique disponible pour le moment.
+                {t('Aucune donnée statistique disponible pour le moment.')}
               </div>
             )}
           </div>

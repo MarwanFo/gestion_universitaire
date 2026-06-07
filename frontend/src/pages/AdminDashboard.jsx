@@ -1601,13 +1601,13 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column: Recent activities / status */}
               <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">Demandes administratives en attente</h3>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">{t('Demandes administratives en attente')}</h3>
                 <div className="space-y-4">
                   {documentRequests.filter(d => d.status === 'En attente').map(req => (
                     <div key={req.id} className="flex justify-between items-center p-4 rounded-xl bg-slate-50 border border-slate-200/60">
                       <div>
                         <span className="block text-slate-800 text-xs font-bold">{req.studentName}</span>
-                        <span className="block text-slate-500 text-[10px] mt-0.5">{req.documentType}</span>
+                        <span className="block text-slate-500 text-[10px] mt-0.5">{t(req.documentType)}</span>
                       </div>
                       <div className="flex gap-2">
                         <button 
@@ -1626,7 +1626,7 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                   {documentRequests.filter(d => d.status === 'En attente').length === 0 && (
-                    <span className="block text-center text-slate-400 text-xs italic py-6">Aucune demande en attente.</span>
+                    <span className="block text-center text-slate-400 text-xs italic py-6">{t('Aucune demande en attente.')}</span>
                   )}
                 </div>
               </div>
@@ -1634,17 +1634,17 @@ export default function AdminDashboard() {
               {/* Right Column: Quick config summary */}
               <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-100/50 backdrop-blur-xl flex flex-col justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">Actions Administrateur</h3>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-6">{t('Actions Administrateur')}</h3>
                   <p className="text-slate-600 text-xs leading-relaxed mb-6">
-                    Gérez directement les autorisations, créez les nouveaux emplois du temps ou approuvez les demandes de pièces officielles générées automatiquement au format PDF.
+                    {t('Gérez directement les autorisations, créez les nouveaux emplois du temps ou approuvez les demandes de pièces officielles générées automatiquement au format PDF.')}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <button onClick={openAddModal} className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm">
-                    <Plus className="h-4 w-4" /> Ajouter Utilisateur
+                    <Plus className="h-4 w-4" /> {t('Ajouter Utilisateur')}
                   </button>
                   <button onClick={() => setActiveTab('documents')} className="w-full py-3 px-4 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-sm">
-                    <FileText className="h-4 w-4" /> Traiter Documents
+                    <FileText className="h-4 w-4" /> {t('Traiter Documents')}
                   </button>
                 </div>
               </div>
@@ -1666,8 +1666,8 @@ export default function AdminDashboard() {
 
           const handleLocalPublish = async (publishAll = false) => {
             const confirmMsg = publishAll 
-              ? "Voulez-vous vraiment publier TOUS les emplois du temps ? Ils seront visibles par tous les étudiants."
-              : `Voulez-vous publier l'emploi du temps de la classe "${selectedGroupObj?.name}" ?`;
+              ? t("Voulez-vous vraiment publier TOUS les emplois du temps ? Ils seront visibles par tous les étudiants.")
+              : t("Voulez-vous publier l'emploi du temps de la classe \"{{groupName}}\" ?", { groupName: t(selectedGroupObj?.name) });
             
             if (!confirm(confirmMsg)) return;
 
@@ -1802,7 +1802,7 @@ export default function AdminDashboard() {
                       <table className="w-full min-w-[800px] border-collapse">
                         <thead>
                           <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                            <th className="p-4 w-28 text-left">Jour</th>
+                            <th className="p-4 w-28 text-left">{t('Jour')}</th>
                             <th className="p-4 border-l border-slate-100">08:30 - 10:00</th>
                             <th className="p-4 border-l border-slate-100">10:30 - 12:00</th>
                             <th className="p-4 border-l border-slate-100">14:00 - 15:30</th>
@@ -1812,7 +1812,7 @@ export default function AdminDashboard() {
                         <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                           {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(day => (
                             <tr key={day} className="hover:bg-slate-50/30 transition-colors">
-                              <td className="p-4 font-bold text-slate-800 bg-slate-50/30">{day}</td>
+                              <td className="p-4 font-bold text-slate-800 bg-slate-50/30">{t(day)}</td>
                               {['08:30-10:00', '10:30-12:00', '14:00-15:30', '16:00-17:30'].map(timeRange => {
                                 const [start, end] = timeRange.split('-');
                                 const matchingSlot = timetableSlots.find(s => {
@@ -1848,7 +1848,7 @@ export default function AdminDashboard() {
                                               </button>
                                               <button 
                                                 onClick={async () => {
-                                                  if (confirm("Supprimer ce cours ?")) {
+                                                  if (confirm(t("Supprimer ce cours ?"))) {
                                                     await api.delete(`/admin/timetables/${matchingSlot.id}`);
                                                     fetchTimetableSlots(mgmtSelectedGroupId);
                                                     fetchAllTimetableSlots();
@@ -1861,16 +1861,16 @@ export default function AdminDashboard() {
                                             </div>
                                           </div>
                                           <h4 className="font-bold text-slate-800 text-[11px] truncate" title={matchingSlot.module?.name}>
-                                            {matchingSlot.module?.name}
+                                            {t(matchingSlot.module?.name)}
                                           </h4>
                                         </div>
                                         <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 font-semibold">
                                           <span className="truncate flex items-center gap-1">
                                             <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                                            {matchingSlot.room?.name || 'N/A'}
+                                            {t(matchingSlot.room?.name) || 'N/A'}
                                           </span>
                                           <span className="truncate font-medium text-slate-500">
-                                            {matchingSlot.module?.professor?.name || 'Sans prof'}
+                                            {matchingSlot.module?.professor?.name || t('Sans prof')}
                                           </span>
                                         </div>
                                       </div>
@@ -1880,7 +1880,7 @@ export default function AdminDashboard() {
                                         className="w-full h-full rounded-xl border border-dashed border-slate-200 hover:border-slate-350 bg-slate-50/20 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100"
                                       >
                                         <Plus className="h-3.5 w-3.5" />
-                                        <span className="text-[10px] font-bold">Planifier</span>
+                                        <span className="text-[10px] font-bold">{t('Planifier')}</span>
                                       </button>
                                     )}
                                   </td>
@@ -1901,7 +1901,7 @@ export default function AdminDashboard() {
                     return !standardTimes.includes(sStart) || !standardTimes.includes(sEnd);
                   }).length > 0 && (
                     <div className="space-y-3">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Créneaux horaires hors-gabarit</h3>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Créneaux horaires hors-gabarit')}</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {timetableSlots.filter(s => {
                           const sStart = s.start_time.substring(0, 5);
@@ -1916,7 +1916,7 @@ export default function AdminDashboard() {
                           }`}>
                             <div className="flex justify-between items-start">
                               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                {slot.day} • {slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)}
+                                {t(slot.day)} • {slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)}
                               </span>
                               <div className="flex items-center gap-1">
                                 <button 
@@ -1927,7 +1927,7 @@ export default function AdminDashboard() {
                                 </button>
                                 <button 
                                   onClick={async () => {
-                                    if (confirm("Supprimer ce cours ?")) {
+                                    if (confirm(t("Supprimer ce cours ?"))) {
                                       await api.delete(`/admin/timetables/${slot.id}`);
                                       fetchTimetableSlots(mgmtSelectedGroupId);
                                       fetchAllTimetableSlots();
@@ -1948,15 +1948,15 @@ export default function AdminDashboard() {
                                 }`}>
                                   {slot.module?.code || 'COURS'}
                                 </span>
-                                <h4 className="font-bold text-slate-800 text-[11px] truncate">{slot.module?.name}</h4>
+                                <h4 className="font-bold text-slate-800 text-[11px] truncate">{t(slot.module?.name)}</h4>
                               </div>
                               <div className="flex items-center justify-between text-[10px] text-slate-450 font-semibold mt-2 pt-2 border-t border-slate-100">
                                 <span className="truncate flex items-center gap-1">
                                   <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                                  {slot.room?.name || 'N/A'}
+                                  {t(slot.room?.name) || 'N/A'}
                                 </span>
                                 <span className="truncate font-medium text-slate-500">
-                                  {slot.module?.professor?.name || 'Sans prof'}
+                                  {slot.module?.professor?.name || t('Sans prof')}
                                 </span>
                               </div>
                             </div>
@@ -2079,7 +2079,7 @@ export default function AdminDashboard() {
                     <table className="w-full min-w-[800px] border-collapse">
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
-                          <th className="p-4 w-28 text-left">Jour</th>
+                          <th className="p-4 w-28 text-left">{t('Jour')}</th>
                           <th className="p-4 border-l border-slate-100">08:30 - 10:00</th>
                           <th className="p-4 border-l border-slate-100">10:30 - 12:00</th>
                           <th className="p-4 border-l border-slate-100">14:00 - 15:30</th>
@@ -2089,7 +2089,7 @@ export default function AdminDashboard() {
                       <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                         {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'].map(day => (
                           <tr key={day} className="hover:bg-slate-50/30 transition-colors">
-                            <td className="p-4 font-bold text-slate-800 bg-slate-50/30">{day}</td>
+                            <td className="p-4 font-bold text-slate-800 bg-slate-50/30">{t(day)}</td>
                             {['08:30-10:00', '10:30-12:00', '14:00-15:30', '16:00-17:30'].map(timeRange => {
                               const [start, end] = timeRange.split('-');
                               const matchingSlot = timetableSlots.find(s => {
@@ -2123,16 +2123,16 @@ export default function AdminDashboard() {
                                           </div>
                                         </div>
                                         <h4 className="font-bold text-slate-800 text-[11px] truncate" title={matchingSlot.module?.name}>
-                                          {matchingSlot.module?.name}
+                                          {t(matchingSlot.module?.name)}
                                         </h4>
                                       </div>
                                       <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 font-semibold">
                                         <span className="truncate flex items-center gap-1">
                                           <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                                          {matchingSlot.room?.name || 'N/A'}
+                                          {t(matchingSlot.room?.name) || 'N/A'}
                                         </span>
                                         <span className="truncate font-medium text-slate-500">
-                                          {matchingSlot.module?.professor?.name || 'Sans prof'}
+                                          {matchingSlot.module?.professor?.name || t('Sans prof')}
                                         </span>
                                       </div>
                                     </div>
@@ -2142,7 +2142,7 @@ export default function AdminDashboard() {
                                       className="w-full h-full rounded-xl border border-dashed border-slate-200 hover:border-slate-350 bg-slate-50/20 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100"
                                     >
                                       <Plus className="h-3.5 w-3.5" />
-                                      <span className="text-[10px] font-bold">Planifier</span>
+                                      <span className="text-[10px] font-bold">{t('Planifier')}</span>
                                     </button>
                                   )}
                                 </td>
@@ -2163,7 +2163,7 @@ export default function AdminDashboard() {
                   return !standardTimes.includes(sStart) || !standardTimes.includes(sEnd);
                 }).length > 0 && (
                   <div className="space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Créneaux horaires hors-gabarit</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">{t('Créneaux horaires hors-gabarit')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {timetableSlots.filter(s => {
                         const sStart = s.start_time.substring(0, 5);
@@ -2174,11 +2174,11 @@ export default function AdminDashboard() {
                         <div key={s.id} className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
                           <div className="space-y-1">
                             <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100 font-extrabold text-[9px] uppercase">
-                              {s.day} : {s.start_time.substring(0, 5)} - {s.end_time.substring(0, 5)}
+                              {t(s.day)} : {s.start_time.substring(0, 5)} - {s.end_time.substring(0, 5)}
                             </span>
-                            <h4 className="font-bold text-slate-800 text-[11px] mt-1">{s.module?.name}</h4>
+                            <h4 className="font-bold text-slate-800 text-[11px] mt-1">{t(s.module?.name)}</h4>
                             <p className="text-[10px] text-slate-400 flex items-center gap-1 font-semibold">
-                              <MapPin className="h-3 w-3 text-slate-400" /> {s.room?.name} | Prof: {s.module?.professor?.name || 'Sans prof'}
+                              <MapPin className="h-3 w-3 text-slate-400" /> {t(s.room?.name)} | {t('Prof:')} {s.module?.professor?.name || t('Sans prof')}
                             </p>
                           </div>
                           <div className="flex gap-1.5">
@@ -2221,12 +2221,12 @@ export default function AdminDashboard() {
               <table className="w-full min-w-[700px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="p-4">Utilisateur</th>
-                    <th className="p-4">Email</th>
-                    <th className="p-4">Rôle</th>
-                    <th className="p-4">Info Spécifique</th>
-                    <th className="p-4">Statut</th>
-                    <th className="p-4 text-right">Actions</th>
+                    <th className="p-4">{t('Utilisateur')}</th>
+                    <th className="p-4">{t('Email')}</th>
+                    <th className="p-4">{t('Rôle')}</th>
+                    <th className="p-4">{t('Info Spécifique')}</th>
+                    <th className="p-4">{t('Statut')}</th>
+                    <th className="p-4 text-right">{t('Actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -2258,25 +2258,25 @@ export default function AdminDashboard() {
                           u.role === 'professor' ? 'bg-purple-50 border-purple-100 text-purple-600' :
                           'bg-pink-50 border-pink-100 text-pink-600'
                         }`}>
-                          {u.role === 'admin' ? 'Administrateur' : u.role === 'professor' ? 'Enseignant' : 'Étudiant'}
+                          {u.role === 'admin' ? t('Administrateur') : u.role === 'professor' ? t('Enseignant') : t('Étudiant')}
                         </span>
                       </td>
                       <td className="p-4 text-slate-550">
                         {u.role === 'student' && (
-                          <span>Groupe: <span className="font-bold text-slate-800">{u.student_profile?.group?.name || 'N/A'}</span></span>
+                          <span>{t('Groupe:')} <span className="font-bold text-slate-800">{t(u.student_profile?.group?.name) || 'N/A'}</span></span>
                         )}
                         {u.role === 'professor' && (
-                          <span>Spécialité: <span className="font-bold text-slate-800">{u.professor_profile?.speciality || 'N/A'}</span></span>
+                          <span>{t('Spécialité:')} <span className="font-bold text-slate-800">{t(u.professor_profile?.speciality) || 'N/A'}</span></span>
                         )}
                         {u.role === 'admin' && (
-                          <span className="text-slate-400 italic">Accès global</span>
+                          <span className="text-slate-400 italic">{t('Accès global')}</span>
                         )}
                       </td>
                       <td className="p-4">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                           u.is_active ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'
                         }`}>
-                          {u.is_active ? 'Actif' : 'Inactif'}
+                          {u.is_active ? t('Actif') : t('Inactif')}
                         </span>
                       </td>
                       <td className="p-4 text-right">
@@ -2801,7 +2801,7 @@ export default function AdminDashboard() {
                     {documentRequests.filter(d => d.userRole === 'student').length === 0 ? (
                       <tr>
                         <td colSpan="6" className="p-8 text-center text-slate-400 italic">
-                          Aucune demande de document soumise par les étudiants.
+                          {t('Aucune demande de document soumise par les étudiants.')}
                         </td>
                       </tr>
                     ) : (
@@ -2814,10 +2814,10 @@ export default function AdminDashboard() {
                           <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="p-4 font-bold text-slate-900">{doc.studentName}</td>
                             <td className="p-4 text-slate-500">
-                              <span className="font-semibold">{classDisplay}</span>
-                              <span className="text-[10px] block text-slate-400">{fieldDisplay}</span>
+                              <span className="font-semibold">{t(classDisplay)}</span>
+                              <span className="text-[10px] block text-slate-400">{t(fieldDisplay)}</span>
                             </td>
-                            <td className="p-4 text-slate-550 font-medium">{doc.documentType}</td>
+                            <td className="p-4 text-slate-550 font-medium">{t(doc.documentType)}</td>
                             <td className="p-4 text-slate-450">{doc.date}</td>
                             <td className="p-4">
                               <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
@@ -2825,7 +2825,7 @@ export default function AdminDashboard() {
                                 doc.status === 'Rejetée' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                                 'bg-amber-50 border-amber-100 text-amber-600'
                               }`}>
-                                {doc.status}
+                                {t(doc.status)}
                               </span>
                             </td>
                             <td className="p-4 text-right flex justify-end gap-2 items-center">
@@ -2835,13 +2835,13 @@ export default function AdminDashboard() {
                                     onClick={() => handleApproveDoc(doc.id)}
                                     className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-colors shadow-sm"
                                   >
-                                    <Check className="h-3 w-3" /> Approuver
+                                    <Check className="h-3 w-3" /> {t('Approuver')}
                                   </button>
                                   <button 
                                     onClick={() => handleRejectDoc(doc.id)}
                                     className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
                                   >
-                                    <X className="h-3 w-3" /> Rejeter
+                                    <X className="h-3 w-3" /> {t('Rejeter')}
                                   </button>
                                 </>
                               ) : doc.status === 'Approuvée' ? (
@@ -2849,10 +2849,10 @@ export default function AdminDashboard() {
                                   onClick={() => window.open(`${api.defaults.baseURL || 'http://127.0.0.1:8000/api'}/admin/documents/${doc.id}/pdf?token=${localStorage.getItem('token')}`, '_blank')}
                                   className="px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
                                 >
-                                  📥 Télécharger le PDF
+                                  📥 {t('Télécharger le PDF')}
                                 </button>
                               ) : (
-                                <span className="text-slate-400 text-[10px] font-bold uppercase italic p-1">Refusé</span>
+                                <span className="text-slate-400 text-[10px] font-bold uppercase italic p-1">{t('Refusé')}</span>
                               )}
                             </td>
                           </tr>
@@ -2870,48 +2870,48 @@ export default function AdminDashboard() {
                 <table className="w-full min-w-[900px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="p-4">Enseignant</th>
-                      <th className="p-4">Département / Spécialité</th>
-                      <th className="p-4">Document demandé</th>
-                      <th className="p-4">Détails Requête</th>
-                      <th className="p-4">Date de demande</th>
-                      <th className="p-4">Statut</th>
-                      <th className="p-4 text-right">Décisions / Actions</th>
+                      <th className="p-4">{t('Enseignant')}</th>
+                      <th className="p-4">{t('Département / Spécialité')}</th>
+                      <th className="p-4">{t('Document demandé')}</th>
+                      <th className="p-4">{t('Détails Requête')}</th>
+                      <th className="p-4">{t('Date de demande')}</th>
+                      <th className="p-4">{t('Statut')}</th>
+                      <th className="p-4 text-right">{t('Décisions / Actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                     {documentRequests.filter(d => d.userRole === 'professor').length === 0 ? (
                       <tr>
                         <td colSpan="7" className="p-8 text-center text-slate-400 italic">
-                          Aucune demande de document soumise par les enseignants.
+                          {t('Aucune demande de document soumise par les enseignants.')}
                         </td>
                       </tr>
                     ) : (
                       documentRequests.filter(d => d.userRole === 'professor').map(doc => {
                         const profProfileObj = doc.user?.professor_profile;
-                        const deptDisplay = profProfileObj?.department || 'Sciences de l\'Ingénieur';
+                        const deptDisplay = profProfileObj?.department || "Sciences de l'Ingénieur";
                         const specDisplay = profProfileObj?.speciality || 'N/A';
 
                         return (
                           <tr key={doc.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="p-4 font-bold text-slate-900">{doc.studentName}</td>
                             <td className="p-4 text-slate-500">
-                              <span className="font-semibold">{deptDisplay}</span>
-                              <span className="text-[10px] block text-slate-400">{specDisplay}</span>
+                              <span className="font-semibold">{t(deptDisplay)}</span>
+                              <span className="text-[10px] block text-slate-400">{t(specDisplay)}</span>
                             </td>
-                            <td className="p-4 text-slate-550 font-medium">{doc.documentType}</td>
+                            <td className="p-4 text-slate-550 font-medium">{t(doc.documentType)}</td>
                             <td className="p-4 text-slate-500 max-w-[250px] truncate">
                               {doc.destination && (
-                                <span className="block text-[10px]"><strong>📍 Destination:</strong> {doc.destination}</span>
+                                <span className="block text-[10px]"><strong>📍 {t('Destination:')}</strong> {doc.destination}</span>
                               )}
                               {doc.start_date && doc.end_date && (
-                                <span className="block text-[10px]"><strong>📅 Période:</strong> Du {doc.start_date} au {doc.end_date}</span>
+                                <span className="block text-[10px]"><strong>📅 {t('Période:')}</strong> {t('Du')} {doc.start_date} {t('au')} {doc.end_date}</span>
                               )}
                               {doc.motif && (
-                                <span className="block text-[10px]"><strong>💬 Motif:</strong> {doc.motif}</span>
+                                <span className="block text-[10px]"><strong>💬 {t('Motif:')}</strong> {doc.motif}</span>
                               )}
                               {!doc.destination && !doc.start_date && !doc.motif && (
-                                <span className="text-slate-400 italic text-[10px]">Aucun détail supplémentaire</span>
+                                <span className="text-slate-400 italic text-[10px]">{t('Aucun détail supplémentaire')}</span>
                               )}
                             </td>
                             <td className="p-4 text-slate-450">{doc.date}</td>
@@ -2921,7 +2921,7 @@ export default function AdminDashboard() {
                                 doc.status === 'Rejetée' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                                 'bg-amber-50 border-amber-100 text-amber-600'
                               }`}>
-                                {doc.status}
+                                {t(doc.status)}
                               </span>
                             </td>
                             <td className="p-4 text-right flex justify-end gap-2 items-center">
@@ -2931,24 +2931,24 @@ export default function AdminDashboard() {
                                     onClick={() => handleApproveDoc(doc.id)}
                                     className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-colors shadow-sm"
                                   >
-                                    <Check className="h-3 w-3" /> Approuver
+                                    <Check className="h-3 w-3" /> {t('Approuver')}
                                   </button>
                                   <button 
                                     onClick={() => handleRejectDoc(doc.id)}
                                     className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-rose-600 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
                                   >
-                                    <X className="h-3 w-3" /> Rejeter
+                                    <X className="h-3 w-3" /> {t('Rejeter')}
                                   </button>
                                 </>
                               ) : doc.status === 'Approuvée' ? (
                                 <button
                                   onClick={() => window.open(`${api.defaults.baseURL || 'http://127.0.0.1:8000/api'}/admin/documents/${doc.id}/pdf?token=${localStorage.getItem('token')}`, '_blank')}
-                                  className="px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-750 hover:bg-indigo-100 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
+                                  className="px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-755 hover:bg-indigo-100 font-bold text-[10px] flex items-center gap-1 transition-all shadow-sm"
                                 >
-                                  📥 Télécharger le PDF
+                                  📥 {t('Télécharger le PDF')}
                                 </button>
                               ) : (
-                                <span className="text-slate-400 text-[10px] font-bold uppercase italic p-1">Refusé</span>
+                                <span className="text-slate-400 text-[10px] font-bold uppercase italic p-1">{t('Refusé')}</span>
                               )}
                             </td>
                           </tr>
@@ -3010,10 +3010,10 @@ export default function AdminDashboard() {
                 <table className="w-full min-w-[600px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="p-4">Nom de la Salle</th>
-                      <th className="p-4">Type</th>
-                      <th className="p-4">Capacité</th>
-                      <th className="p-4 text-right">Actions</th>
+                      <th className="p-4">{t('Nom de la Salle')}</th>
+                      <th className="p-4">{t('Type')}</th>
+                      <th className="p-4">{t('Capacité')}</th>
+                      <th className="p-4 text-right">{t('Actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -3023,7 +3023,7 @@ export default function AdminDashboard() {
                           <div className="h-7 w-7 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-extrabold text-[11px]">
                             {room.name.substring(0, 3)}
                           </div>
-                          {room.name}
+                          {t(room.name)}
                         </td>
                         <td className="p-4">
                           <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
@@ -3031,22 +3031,22 @@ export default function AdminDashboard() {
                             room.type === 'TD' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' :
                             'bg-emerald-50 border-emerald-100 text-emerald-600'
                           }`}>
-                            {room.type}
+                            {t(room.type)}
                           </span>
                         </td>
-                        <td className="p-4 text-slate-650 font-semibold">{room.capacity} places</td>
+                        <td className="p-4 text-slate-650 font-semibold">{t('{{capacity}} places', { capacity: room.capacity })}</td>
                         <td className="p-4 text-right flex justify-end gap-2">
                           <button
                             onClick={() => openEditRoomModal(room)}
                             className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-indigo-600 transition-colors"
-                            title="Modifier"
+                            title={t("Modifier")}
                           >
                             <Edit className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleDeleteRoom(room.id)}
                             className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 text-rose-600 transition-colors"
-                            title="Supprimer"
+                            title={t("Supprimer")}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -3059,20 +3059,20 @@ export default function AdminDashboard() {
             ) : (
               <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm overflow-x-auto">
                 {loadingReservations ? (
-                  <div className="p-8 text-center text-xs text-slate-400">Chargement des réservations...</div>
+                  <div className="p-8 text-center text-xs text-slate-400">{t('Chargement des réservations...')}</div>
                 ) : dbReservations.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-slate-400">Aucune réservation en cours ou passée.</div>
+                  <div className="p-8 text-center text-xs text-slate-400">{t('Aucune réservation en cours ou passée.')}</div>
                 ) : (
                   <table className="w-full min-w-[700px] border-collapse text-left">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/70 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="p-4">Date</th>
-                        <th className="p-4">Heures</th>
-                        <th className="p-4">Salle</th>
-                        <th className="p-4">Enseignant</th>
-                        <th className="p-4">Motif / Événement</th>
-                        <th className="p-4">Statut</th>
-                        <th className="p-4 text-right">Actions</th>
+                        <th className="p-4">{t('Date')}</th>
+                        <th className="p-4">{t('Heures')}</th>
+                        <th className="p-4">{t('Salle')}</th>
+                        <th className="p-4">{t('Enseignant')}</th>
+                        <th className="p-4">{t('Motif / Événement')}</th>
+                        <th className="p-4">{t('Statut')}</th>
+                        <th className="p-4 text-right">{t('Actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
@@ -3082,10 +3082,10 @@ export default function AdminDashboard() {
                           <td className="p-4 text-slate-600 font-medium">
                             {res.start_time.substring(0, 5)} - {res.end_time.substring(0, 5)}
                           </td>
-                          <td className="p-4 font-bold text-slate-800">{res.room ? res.room.name : 'Inconnue'}</td>
-                          <td className="p-4 text-slate-650">{res.professor ? res.professor.name : 'Administrateur'}</td>
-                          <td className="p-4 text-slate-500 max-w-[200px] truncate" title={res.reason}>
-                            {res.reason || 'Aucun motif'}
+                          <td className="p-4 font-bold text-slate-800">{res.room ? t(res.room.name) : t('Inconnue')}</td>
+                          <td className="p-4 text-slate-650">{res.professor ? res.professor.name : t('Administrateur')}</td>
+                          <td className="p-4 text-slate-550 max-w-[200px] truncate" title={res.reason}>
+                            {res.reason || t('Aucun motif')}
                           </td>
                           <td className="p-4">
                             <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
@@ -3093,7 +3093,7 @@ export default function AdminDashboard() {
                               res.status === 'rejected' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                               'bg-amber-50 border-amber-100 text-amber-600'
                             }`}>
-                              {res.status === 'approved' ? 'Approuvée' : res.status === 'rejected' ? 'Rejetée' : 'En attente'}
+                              {res.status === 'approved' ? t('Approuvée') : res.status === 'rejected' ? t('Rejetée') : t('En attente')}
                             </span>
                           </td>
                           <td className="p-4 text-right flex justify-end gap-2">
@@ -3103,7 +3103,7 @@ export default function AdminDashboard() {
                                   onClick={() => handleApproveReservation(res.id)}
                                   className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 transition-colors"
                                 >
-                                  <Check className="h-3 w-3" /> Accepter
+                                  <Check className="h-3 w-3" /> {t('Accepter')}
                                 </button>
                                 <button
                                   onClick={() => {
@@ -3113,12 +3113,12 @@ export default function AdminDashboard() {
                                   }}
                                   className="px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100 hover:bg-rose-100 text-rose-600 font-bold text-[10px] flex items-center gap-1 transition-colors"
                                 >
-                                  <X className="h-3 w-3" /> Rejeter
+                                  <X className="h-3 w-3" /> {t('Rejeter')}
                                 </button>
                               </>
                             )}
                             {res.status !== 'pending' && (
-                              <span className="text-slate-400 text-[10px] font-bold uppercase italic py-1 px-2">Traité</span>
+                              <span className="text-slate-400 text-[10px] font-bold uppercase italic py-1 px-2">{t('Traité')}</span>
                             )}
                           </td>
                         </tr>

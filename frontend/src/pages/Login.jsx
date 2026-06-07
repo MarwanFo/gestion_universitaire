@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { UserCheck, GraduationCap, Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
+import LanguageDropdown from '../components/LanguageDropdown';
 
 export default function Login() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +44,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] text-slate-800 relative overflow-hidden font-sans">
+      {/* Absolute Language Dropdown */}
+      <div className="absolute top-6 right-6 z-20">
+        <LanguageDropdown />
+      </div>
+
       {/* Dynamic Background Design Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-br from-indigo-300/10 via-purple-300/5 to-transparent blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-tr from-violet-300/10 via-pink-300/5 to-transparent blur-[120px] pointer-events-none" />
@@ -56,9 +64,9 @@ export default function Login() {
               <span className="text-white font-black text-xl tracking-wider">UP</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Portail Académique
+              {t('login.space_title')}
             </h2>
-            <p className="text-slate-500 text-xs mt-2 font-medium">Espace de connexion pour Étudiants & Enseignants</p>
+            <p className="text-slate-550 text-xs mt-2 font-medium">{t('login.space_desc')}</p>
           </div>
 
           {error && (
@@ -70,7 +78,7 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                Adresse Email
+                {t('login.email_label')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -89,7 +97,7 @@ export default function Login() {
 
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                Mot de passe
+                {t('login.password_label')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -118,13 +126,13 @@ export default function Login() {
               disabled={loading}
               className="w-full py-4 px-4 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 shadow-md shadow-indigo-500/10 focus:outline-none disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer hover:shadow-indigo-500/20"
             >
-              {loading ? 'Connexion en cours...' : 'Se connecter'}
+              {loading ? t('login.loading') : t('login.button')}
               <ArrowRight className="h-4 w-4" />
             </button>
           </form>
 
           <div className="mt-8 pt-6 border-t border-slate-200">
-            <span className="block text-center text-slate-400 text-[10px] font-bold mb-4 tracking-widest uppercase">Identifiants de démonstration</span>
+            <span className="block text-center text-slate-400 text-[10px] font-bold mb-4 tracking-widest uppercase">{t('login.autofill_title')}</span>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -134,7 +142,7 @@ export default function Login() {
                 <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600">
                   <UserCheck className="h-4.5 w-4.5" />
                 </div>
-                <span>Enseignant</span>
+                <span>{t('login.autofill_professor')}</span>
               </button>
               
               <button
@@ -145,7 +153,7 @@ export default function Login() {
                 <div className="h-8 w-8 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-600">
                   <GraduationCap className="h-4.5 w-4.5" />
                 </div>
-                <span>Étudiant</span>
+                <span>{t('login.autofill_student')}</span>
               </button>
             </div>
           </div>
