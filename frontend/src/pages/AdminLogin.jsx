@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import upfLogo from '../assets/UPFLOGO-removebg-preview.png';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -51,9 +52,7 @@ export default function AdminLogin() {
         
         <div className="p-8 sm:p-10">
           <div className="text-center mb-8">
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-rose-500 via-red-500 to-amber-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-rose-500/20">
-              <ShieldCheck className="text-white h-6.5 w-6.5" />
-            </div>
+            <img src={upfLogo} alt="UPF Logo" className="h-16 w-auto object-contain mx-auto mb-4" />
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {t('login.admin_title')}
             </h2>

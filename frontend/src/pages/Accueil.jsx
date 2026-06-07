@@ -1,4 +1,5 @@
 import React from 'react';
+import upfLogo from '../assets/UPFLOGO-removebg-preview.png';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -43,13 +44,8 @@ export default function Accueil() {
       {/* Header */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-slate-200/80 px-6 py-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/10">
-              UP
-            </div>
-            <span className="font-extrabold text-xl tracking-tight text-slate-900">
-              UPF Portal
-            </span>
+          <div className="flex items-center gap-2">
+            <img src={upfLogo} alt="UPF Logo" className="h-10 w-auto object-contain" />
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500">

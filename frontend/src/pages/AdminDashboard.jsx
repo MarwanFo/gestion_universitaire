@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import upfLogo from '../assets/UPFLOGO-removebg-preview.png';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
@@ -1339,14 +1340,9 @@ export default function AdminDashboard() {
 
       {/* Mobile Header Bar */}
       <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200/80 relative z-20">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-bold text-white shadow-md">
-            UP
+        <div className="flex items-center gap-2">
+            <img src={upfLogo} alt="UPF Logo" className="h-9 w-auto object-contain" />
           </div>
-          <span className="font-extrabold text-base tracking-tight text-slate-900">
-            UPF Portal
-          </span>
-        </div>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors"
@@ -1371,14 +1367,9 @@ export default function AdminDashboard() {
       }`}>
         <div>
           <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/10">
-                UP
+            <div className="flex items-center gap-2">
+                <img src={upfLogo} alt="UPF Logo" className="h-10 w-auto object-contain" />
               </div>
-              <span className="font-extrabold text-lg tracking-tight text-slate-900">
-                UPF Portal
-              </span>
-            </div>
             {/* Close button on mobile */}
             <button 
               onClick={() => setIsSidebarOpen(false)}

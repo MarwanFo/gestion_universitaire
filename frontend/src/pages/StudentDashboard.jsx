@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import upfLogo from '../assets/UPFLOGO-removebg-preview.png';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
@@ -429,13 +430,8 @@ export default function StudentDashboard() {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200/80 p-6 flex flex-col justify-between relative z-10">
         <div>
-          <div className="flex items-center gap-3 mb-8">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/10">
-              UP
-            </div>
-            <span className="font-extrabold text-lg tracking-tight text-slate-900">
-              UPF Portal
-            </span>
+          <div className="flex items-center gap-2 mb-8">
+            <img src={upfLogo} alt="UPF Logo" className="h-10 w-auto object-contain" />
           </div>
 
           <nav className="space-y-1.5">
